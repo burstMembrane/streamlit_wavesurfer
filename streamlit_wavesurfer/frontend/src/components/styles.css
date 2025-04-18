@@ -1,5 +1,9 @@
 #waveform {
     font-family: 'Inter', sans-serif;
+
+
+    /* var for handle width */
+    --handle-width: 2rem;
 }
 
 #waveform ::part(cursor) {
@@ -30,7 +34,24 @@
     text-overflow: ellipsis;
 }
 
-#waveform ::part(region-handle-right) {}
+#waveform ::part(region-handle-right) {
+    width: var(--handle-width);
+    background-color: transparent;
+    filter: invert(1);
+    /* gradient from transparent to white */
+    background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.1));
+    border: none;
+}
+
+#waveform ::part(region-handle-left) {
+    width: var(--handle-width);
+    /* invert */
+    filter: invert(1);
+    background-color: transparent;
+    /* gradient from white to transparent */
+    background: linear-gradient(to left, transparent, rgba(255, 255, 255, 0.1));
+    border: none;
+}
 
 #waveform ::part(region) {}
 

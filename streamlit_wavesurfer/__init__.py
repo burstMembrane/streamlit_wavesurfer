@@ -3,6 +3,7 @@ import random
 import urllib.parse
 from dataclasses import dataclass
 from pathlib import Path
+from pprint import pprint
 from typing import List, Optional
 
 import streamlit as st
@@ -186,7 +187,7 @@ def wavesurfer(
         default=0,
         wave_options=wave_options.to_dict(),
     )
-    return bool(component_value)
+    return component_value
 
 
 if not _RELEASE:
@@ -205,8 +206,8 @@ if not _RELEASE:
         regions = json.load(f)
     regions = RegionList(regions)
     audio_file_path = Path(__file__).parent / "frontend" / "public" / "because.mp3"
-    print(regions)
-    num_clicks = wavesurfer(
+
+    state = wavesurfer(
         audio_src=str(audio_file_path.absolute()),
         regions=regions,
         key="wavesurfer",
@@ -218,3 +219,4 @@ if not _RELEASE:
             height=300,
         ),
     )
+    pprint(state)

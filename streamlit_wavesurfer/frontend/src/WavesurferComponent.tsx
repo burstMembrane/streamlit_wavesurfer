@@ -26,6 +26,7 @@ export interface WaveSurferUserOptions {
 interface WavesurferComponentProps {
     args: {
         regions: Array<{
+            id: string;
             start: number;
             end: number;
             content: string;
@@ -58,9 +59,17 @@ const WavesurferComponent = ({ args }: WavesurferComponentProps) => {
     useEffect(() => {
         if (updatedRegions.length > 0) {
             console.log("Sending updated regions to Streamlit:", updatedRegions);
+            // only save the id, text, start, end
+            // filter any regions that don't have a start or end
+            const filteredRegions = updatedRegions.filter((region) => region.start > 0 && region.end > 0);
             Streamlit.setComponentValue({
                 ready: ready,
-                regions: updatedRegions
+                regions: filteredRegions.map((region) => ({
+                    id: region.id,
+                    content: region.content,
+                    start: region.start,
+                    end: region.end
+                }))
             });
         }
     }, [updatedRegions, ready]);

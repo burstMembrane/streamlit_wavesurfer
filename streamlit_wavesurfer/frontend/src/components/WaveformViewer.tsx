@@ -6,8 +6,9 @@ import TimelinePlugin from "wavesurfer.js/dist/plugins/timeline.js"
 import { Play, Pause, SkipBack, SkipForward, Save } from 'lucide-react';
 import { WaveSurferUserOptions } from '../WavesurferComponent';
 import { lightenColor } from '../utils';
-// import './styles.css';
+import './styles.css';
 export interface Region {
+    id?: string;
     start: number;
     end: number;
     content: string;
@@ -167,16 +168,7 @@ export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, re
     const updateRegions = (regions: Region[]) => {
         if (!wsRegions || regionsUpdated) return;
         // // console.log('updateRegions', regions);
-        wsRegions.clearRegions();
-        regions.forEach(region => {
-            wsRegions.addRegion({
-                ...region,
-                id: buildRegionId(region),
-                color: `rgba(${Math.random() * 255}, ${Math.random() * 255}, ${Math.random() * 255}, 0.5)`,
-                drag: region.drag,
-                resize: region.resize,
-            });
-        });
+
         setRegionsUpdated(true);
     };
 
@@ -421,10 +413,13 @@ export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, re
             ws.zoom(zoomMinPxPerS);
             setDuration(ws.getDuration());
 
-            // Load regions once when waveform is ready
+            // // Load regions once when waveform is ready
             regions.forEach(region => {
+                if (!region.start || !region.end) return;
                 regionsPlugin.addRegion({
-                    ...region,
+                    start: region.start,
+                    end: region.end,
+                    content: region.content,
                     id: buildRegionId(region),
                     color: `rgba(${Math.random() * 255}, ${Math.random() * 255}, ${Math.random() * 255}, 0.5)`,
                     drag: region.drag,
