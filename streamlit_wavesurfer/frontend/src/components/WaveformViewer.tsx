@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import WaveSurfer from 'wavesurfer.js';
+import WaveSurferOptions from 'wavesurfer.js';
 import RegionsPlugin from "wavesurfer.js/dist/plugins/regions.js"
 import TimelinePlugin from "wavesurfer.js/dist/plugins/timeline.js"
 import { Play, Pause, SkipBack, SkipForward } from 'lucide-react';
