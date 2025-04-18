@@ -3,7 +3,7 @@ import WaveSurfer from 'wavesurfer.js';
 
 import RegionsPlugin from "wavesurfer.js/dist/plugins/regions.js"
 import TimelinePlugin from "wavesurfer.js/dist/plugins/timeline.js"
-import { Play, Pause, SkipBack, SkipForward } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Save } from 'lucide-react';
 import { WaveSurferUserOptions } from '../WavesurferComponent';
 import { lightenColor } from '../utils';
 // import './styles.css';
@@ -21,16 +21,7 @@ export class Region {
     }
 }
 
-// Custom history management types
-interface RegionState {
-    [regionId: string]: { start: number; end: number };
-}
-
-interface RegionEditHistory {
-    past: RegionState[];
-    present: RegionState;
-    future: RegionState[];
-}
+// Custom history management types removed
 
 export interface WavesurferViewerProps {
     audioSrc: string;
@@ -51,12 +42,7 @@ export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, re
     const [activeRegion, setActiveRegion] = useState<any>(null);
     const [regionUnderCursor, setRegionUnderCursor] = useState<any>(null);
 
-    // Custom region edit history management
-    const [editHistory, setEditHistory] = useState<RegionEditHistory>({
-        past: [],
-        present: {},
-        future: []
-    });
+    // Custom region edit history management removed
 
     const [zoomMinPxPerS, setZoomMinPxPerS] = useState(100);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -117,84 +103,7 @@ export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, re
         reportRegionsToParent();
     };
 
-    const saveRegionState = (targetRegion: any) => {
-        // Create a new present state with the current region state
-        const newPresent = { ...editHistory.present };
 
-        // Store the region's current state
-        newPresent[targetRegion.id] = {
-            start: targetRegion.start,
-            end: targetRegion.end
-        };
-
-        // Update history, moving current state to past
-        setEditHistory({
-            past: [...editHistory.past, editHistory.present],
-            present: newPresent,
-            future: [] // Clear future when a new action is performed
-        });
-
-        // // console.log('Saved region state:', targetRegion.id, newPresent[targetRegion.id]);
-    };
-
-    const undoEdit = () => {
-        // Get the target region from activeRegion or regionUnderCursor
-        const targetRegion = activeRegionRef.current || regionUnderCursor;
-        if (!targetRegion || editHistory.past.length === 0) return;
-
-        // Get the last past state
-        const previous = editHistory.past[editHistory.past.length - 1];
-        const newPast = editHistory.past.slice(0, editHistory.past.length - 1);
-
-        // Check if we have a state for this region
-        if (previous[targetRegion.id]) {
-            // console.log('Undoing to previous state:', previous[targetRegion.id]);
-
-            // Apply the previous state to the region and report changes
-            updateRegionBoundary(targetRegion, {
-                start: previous[targetRegion.id].start,
-                end: previous[targetRegion.id].end
-            });
-
-            // Update history
-            setEditHistory({
-                past: newPast,
-                present: previous,
-                future: [editHistory.present, ...editHistory.future]
-            });
-        }
-    };
-
-    const redoEdit = () => {
-        // Get the target region from activeRegion or regionUnderCursor
-        const targetRegion = activeRegionRef.current || regionUnderCursor;
-        if (!targetRegion || editHistory.future.length === 0) return;
-
-        // Get the first future state
-        const next = editHistory.future[0];
-        const newFuture = editHistory.future.slice(1);
-
-        // Check if we have a state for this region
-        if (next[targetRegion.id]) {
-            // console.log('Redoing to next state:', next[targetRegion.id]);
-
-            // Apply the future state to the region and report changes
-            updateRegionBoundary(targetRegion, {
-                start: next[targetRegion.id].start,
-                end: next[targetRegion.id].end
-            });
-
-            // Update history
-            setEditHistory({
-                past: [...editHistory.past, editHistory.present],
-                present: next,
-                future: newFuture
-            });
-        }
-    };
-
-    const canUndo = editHistory.past.length > 0;
-    const canRedo = editHistory.future.length > 0;
 
     useEffect(() => {
         // Keep ref in sync with state
@@ -428,11 +337,7 @@ export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, re
                 const targetRegion = getTargetRegion();
 
                 if (targetRegion) {
-                    // First save the current state
-                    saveRegionState(targetRegion);
-
-                    // Now update the region with new values
-                    // console.log(`Setting start from ${targetRegion.start} to ${currentTime}`);
+                    // Update the region with new values
                     updateRegionBoundary(targetRegion, {
                         start: currentTime,
                         end: targetRegion.end
@@ -447,11 +352,7 @@ export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, re
                 const targetRegion = getTargetRegion();
 
                 if (targetRegion) {
-                    // First save the current state
-                    saveRegionState(targetRegion);
-
-                    // Now update the region with new values
-                    // console.log(`Setting end from ${targetRegion.end} to ${currentTime}`);
+                    // Update the region with new values
                     updateRegionBoundary(targetRegion, {
                         start: targetRegion.start,
                         end: currentTime
@@ -459,18 +360,6 @@ export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, re
 
                     // Ensure this becomes the active region
                     setActiveRegion(targetRegion);
-                }
-            } else if (e.key.toLowerCase() === 'u') {
-                e.preventDefault();
-                if (canUndo) {
-                    // console.log('Undoing change, history:', editHistory);
-                    undoEdit();
-                }
-            } else if (e.key.toLowerCase() === 'r') {
-                e.preventDefault();
-                if (canRedo) {
-                    // console.log('Redoing change, history:', editHistory);
-                    redoEdit();
                 }
             } else if (e.key.toLowerCase() === 's') {
                 e.preventDefault();
@@ -656,6 +545,27 @@ export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, re
                     >
                         <SkipForward size={20} />
                     </button>
+
+                    <button
+                        onClick={() => {
+                            reportRegionsToParent();
+                        }}
+                        style={{
+                            background: '#4CAF50',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            padding: '5px 10px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'white',
+                            marginLeft: '10px'
+                        }}
+                    >
+                        <Save size={16} style={{ marginRight: '5px' }} />
+                        Save Regions
+                    </button>
                 </div>
 
                 <div style={{
@@ -706,8 +616,6 @@ export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, re
                 }}>
                     <span><b>i</b>: set region start</span>
                     <span><b>o</b>: set region end</span>
-                    <span><b>u</b>: undo</span>
-                    <span><b>r</b>: redo</span>
                     <span><b>s</b>: play region start</span>
                     <span><b>e</b>: play region end</span>
                     <span><b>space</b>: play/pause</span>
