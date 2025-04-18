@@ -37,13 +37,14 @@ export interface WavesurferViewerProps {
     regions?: Region[];
     waveOptions: WaveSurferUserOptions;
     onReady: () => void;
+    onRegionsChange?: (regions: Region[]) => void;
 }
 
 const buildRegionId = (region: Region) => {
     return `region-${btoa(JSON.stringify({ content: region.content, start: region.start, end: region.end }))}`;
 }
 
-export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, regions = [], onReady, waveOptions }) => {
+export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, regions = [], onReady, waveOptions, onRegionsChange }) => {
     const waveformRef = useRef<HTMLDivElement>(null);
     const [waveform, setWaveform] = useState<WaveSurfer | null>(null);
     const [wsRegions, setWsRegions] = useState<RegionsPlugin | null>(null);
@@ -74,7 +75,48 @@ export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, re
     // Keep track of region original colors to restore them when a region is no longer active
     const [regionOriginalColors, setRegionOriginalColors] = useState<Record<string, string>>({});
 
-    // Custom undo/redo functions
+    // Function to send updated regions to parent
+    const reportRegionsToParent = () => {
+        if (!wsRegions || !onRegionsChange) return;
+
+        // Get all current regions from wavesurfer
+        const currentRegions = wsRegions.getRegions();
+
+        // Convert to the Region interface expected by the parent
+        const regionsForParent = currentRegions.map(wsRegion => {
+            let content = '';
+            // Convert HTMLElement to string or use string directly
+            if (typeof wsRegion.content === 'string') {
+                content = wsRegion.content;
+            } else if (wsRegion.content instanceof HTMLElement) {
+                content = wsRegion.content.textContent || '';
+            }
+
+            return {
+                start: wsRegion.start,
+                end: wsRegion.end,
+                content: content,
+                color: wsRegion.color,
+                drag: wsRegion.drag,
+                resize: wsRegion.resize
+            };
+        });
+
+        console.log('Reporting regions to parent:', regionsForParent);
+        onRegionsChange(regionsForParent);
+    };
+
+    // Update region boundaries after edit operations
+    const updateRegionBoundary = (targetRegion: any, options: any) => {
+        if (!targetRegion) return;
+
+        // Apply the options to the region
+        targetRegion.setOptions(options);
+
+        // Report changes to parent
+        reportRegionsToParent();
+    };
+
     const saveRegionState = (targetRegion: any) => {
         // Create a new present state with the current region state
         const newPresent = { ...editHistory.present };
@@ -92,7 +134,7 @@ export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, re
             future: [] // Clear future when a new action is performed
         });
 
-        console.log('Saved region state:', targetRegion.id, newPresent[targetRegion.id]);
+        // // console.log('Saved region state:', targetRegion.id, newPresent[targetRegion.id]);
     };
 
     const undoEdit = () => {
@@ -106,10 +148,10 @@ export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, re
 
         // Check if we have a state for this region
         if (previous[targetRegion.id]) {
-            console.log('Undoing to previous state:', previous[targetRegion.id]);
+            // console.log('Undoing to previous state:', previous[targetRegion.id]);
 
-            // Apply the previous state to the region
-            targetRegion.setOptions({
+            // Apply the previous state to the region and report changes
+            updateRegionBoundary(targetRegion, {
                 start: previous[targetRegion.id].start,
                 end: previous[targetRegion.id].end
             });
@@ -134,10 +176,10 @@ export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, re
 
         // Check if we have a state for this region
         if (next[targetRegion.id]) {
-            console.log('Redoing to next state:', next[targetRegion.id]);
+            // console.log('Redoing to next state:', next[targetRegion.id]);
 
-            // Apply the future state to the region
-            targetRegion.setOptions({
+            // Apply the future state to the region and report changes
+            updateRegionBoundary(targetRegion, {
                 start: next[targetRegion.id].start,
                 end: next[targetRegion.id].end
             });
@@ -215,7 +257,7 @@ export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, re
 
     const updateRegions = (regions: Region[]) => {
         if (!wsRegions || regionsUpdated) return;
-        // console.log('updateRegions', regions);
+        // // console.log('updateRegions', regions);
         wsRegions.clearRegions();
         regions.forEach(region => {
             wsRegions.addRegion({
@@ -285,6 +327,7 @@ export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, re
 
         // Add keyboard event listener for space bar, arrow keys, and region markers
         const handleKeyDown = (e: KeyboardEvent) => {
+
             if (e.code === 'Space') {
                 e.preventDefault(); // Prevent page scroll
                 if (ws.isPlaying()) {
@@ -303,6 +346,82 @@ export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, re
                 const currentTime = ws.getCurrentTime();
                 const duration = ws.getDuration();
                 ws.seekTo(Math.min(duration, currentTime + 0.1) / duration);
+            } else if (e.code === 'ArrowUp') {
+                e.preventDefault(); // Prevent page scroll
+                // Navigate to previous region
+                if (!wsRegions) return;
+                console.log("Navigating to previous region");
+                const regions = wsRegions.getRegions().sort((a, b) => a.start - b.start);
+                if (regions.length === 0) return;
+
+                const currentTime = ws.getCurrentTime();
+
+                // Find the previous region based on current playhead position
+                let prevRegionIndex = -1;
+
+                // Find the region just before current time
+                for (let i = 0; i < regions.length; i++) {
+                    if (regions[i].start > currentTime) {
+                        break; // We've gone past the current time
+                    }
+                    prevRegionIndex = i;
+                }
+
+                // If we're at or before the first region, wrap to the last
+                if (prevRegionIndex === -1 || prevRegionIndex === 0) {
+                    prevRegionIndex = regions.length - 1;
+                } else {
+                    // Go to previous region
+                    prevRegionIndex -= 1;
+                }
+
+                const targetRegion = regions[prevRegionIndex];
+
+                if (targetRegion) {
+                    // Seek to region start
+                    ws.seekTo(targetRegion.start / ws.getDuration());
+                    // Set as active region
+                    setActiveRegion(targetRegion);
+                    console.log("Navigated to previous region:", targetRegion.id);
+                }
+            } else if (e.code === 'ArrowDown') {
+                e.preventDefault(); // Prevent page scroll
+                // Navigate to next region
+                if (!wsRegions) return;
+
+                console.log("Navigating to next region");
+
+                const regions = wsRegions.getRegions().sort((a, b) => a.start - b.start);
+                if (regions.length === 0) return;
+
+                const currentTime = ws.getCurrentTime();
+
+                // Find the current or next region
+                let nextRegionIndex = -1;
+
+                // Find first region that starts after current time
+                for (let i = 0; i < regions.length; i++) {
+                    if (regions[i].start >= currentTime) {
+                        nextRegionIndex = i;
+                        break;
+                    }
+                }
+
+                // If we're at or after the last region, wrap to the first
+                if (nextRegionIndex === -1) {
+                    nextRegionIndex = 0;
+                }
+
+                const targetRegion = regions[nextRegionIndex];
+                console.log("Navigated to next region:", targetRegion.id);
+
+                if (targetRegion) {
+                    // Seek to region start
+                    ws.seekTo(targetRegion.start / ws.getDuration());
+                    // Set as active region
+                    setActiveRegion(targetRegion);
+                    console.log("Navigated to next region:", targetRegion.id);
+                }
             } else if (e.key.toLowerCase() === 'i') {
                 e.preventDefault();
                 const currentTime = ws.getCurrentTime();
@@ -313,12 +432,11 @@ export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, re
                     saveRegionState(targetRegion);
 
                     // Now update the region with new values
-                    console.log(`Setting start from ${targetRegion.start} to ${currentTime}`);
-                    targetRegion.setOptions({
+                    // console.log(`Setting start from ${targetRegion.start} to ${currentTime}`);
+                    updateRegionBoundary(targetRegion, {
                         start: currentTime,
                         end: targetRegion.end
                     });
-                    console.log('Updated region', targetRegion);
 
                     // Ensure this becomes the active region
                     setActiveRegion(targetRegion);
@@ -333,8 +451,8 @@ export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, re
                     saveRegionState(targetRegion);
 
                     // Now update the region with new values
-                    console.log(`Setting end from ${targetRegion.end} to ${currentTime}`);
-                    targetRegion.setOptions({
+                    // console.log(`Setting end from ${targetRegion.end} to ${currentTime}`);
+                    updateRegionBoundary(targetRegion, {
                         start: targetRegion.start,
                         end: currentTime
                     });
@@ -345,39 +463,43 @@ export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, re
             } else if (e.key.toLowerCase() === 'u') {
                 e.preventDefault();
                 if (canUndo) {
-                    console.log('Undoing change, history:', editHistory);
+                    // console.log('Undoing change, history:', editHistory);
                     undoEdit();
                 }
             } else if (e.key.toLowerCase() === 'r') {
                 e.preventDefault();
                 if (canRedo) {
-                    console.log('Redoing change, history:', editHistory);
+                    // console.log('Redoing change, history:', editHistory);
                     redoEdit();
                 }
-            } else if (e.key.toLowerCase() === 'l') {
+            } else if (e.key.toLowerCase() === 's') {
                 e.preventDefault();
                 const targetRegion = getTargetRegion();
 
                 if (targetRegion) {
-
-                    // console.log('targetRegion', targetRegion);
-                    // Toggle loop region
-                    setLoopRegion(prev => !prev);
-
-                    // Ensure this is the active region
                     setActiveRegion(targetRegion);
 
-                    // If we're enabling looping and the region isn't active, 
-                    // seek to it and start playing it
-                    if (!loopRegion) {
-                        ws.seekTo(targetRegion.start / ws.getDuration());
-
-                        // If not already playing, start playback
-                        if (!ws.isPlaying()) {
-                            ws.play();
-                            setIsPlaying(true);
-                        }
+                    ws.seekTo(targetRegion.start / ws.getDuration());
+                    if (!ws.isPlaying()) {
+                        ws.play();
+                        setIsPlaying(true);
                     }
+
+                }
+            }
+            else if (e.key.toLowerCase() === 'e') {
+                e.preventDefault();
+                const targetRegion = getTargetRegion();
+
+                if (targetRegion) {
+                    setActiveRegion(targetRegion);
+
+                    ws.seekTo(targetRegion.end / ws.getDuration());
+                    if (!ws.isPlaying()) {
+                        ws.play();
+                        setIsPlaying(true);
+                    }
+
                 }
             }
         };
@@ -385,19 +507,19 @@ export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, re
         window.addEventListener('keydown', handleKeyDown);
 
         regionsPlugin.on('region-in', (region) => {
-            console.log('region-in', region);
+            // console.log('region-in', region);
             setActiveRegion(region);
         });
 
         regionsPlugin.on('region-out', (region) => {
-            console.log('region-out', region);
+            // console.log('region-out', region);
             if (region === activeRegionRef.current && loopRegion) {
                 region.play();
             }
         });
 
         regionsPlugin.on('region-clicked', (region) => {
-            console.log('region-clicked', region);
+            // console.log('region-clicked', region);
             setActiveRegion(region);
             region.play();
             ws.seekTo(region.start / ws.getDuration());
@@ -490,12 +612,14 @@ export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, re
 
                     <button
                         onClick={() => {
-                            if (isPlaying) {
-                                waveform?.pause();
+                            if (!waveform) return;
+
+                            if (waveform.isPlaying()) {
+                                waveform.pause();
                                 setIsPlaying(false);
                                 setLoopRegion(false);
                             } else {
-                                waveform?.play();
+                                waveform.play();
                                 setIsPlaying(true);
                             }
                         }}
@@ -510,7 +634,7 @@ export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, re
                             color: 'white'
                         }}
                     >
-                        {!isPlaying ? <Play size={24} /> : <Pause size={24} />}
+                        {!waveform?.isPlaying() ? <Play size={24} /> : <Pause size={24} />}
                     </button>
 
                     <button
@@ -538,7 +662,7 @@ export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, re
                     display: 'flex',
                     alignItems: 'center',
                     gap: '10px',
-                    fontFamily: 'monospace',
+
                     color: 'white'
                 }}>
                     <span>{formatTime(currentTime)}</span>
@@ -568,6 +692,30 @@ export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, re
                             flex: '1'
                         }}
                     />
+                </div>
+                {/* keyboard hints */}
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    flexDirection: 'row',
+                    flexWrap: 'wrap',
+                    gap: '10px',
+
+                    color: 'white',
+                    maxWidth: '600px'
+                }}>
+                    <span><b>i</b>: set region start</span>
+                    <span><b>o</b>: set region end</span>
+                    <span><b>u</b>: undo</span>
+                    <span><b>r</b>: redo</span>
+                    <span><b>s</b>: play region start</span>
+                    <span><b>e</b>: play region end</span>
+                    <span><b>space</b>: play/pause</span>
+                    <span><b>↑</b>: prev region</span>
+                    <span><b>↓</b>: next region</span>
+                    <span><b>←</b>: seek -0.1s</span>
+                    <span><b>→</b>: seek +0.1s</span>
+                    <span><b>l</b>: loop region</span>
                 </div>
             </div>
         </div>

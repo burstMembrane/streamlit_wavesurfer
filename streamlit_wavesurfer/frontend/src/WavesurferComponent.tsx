@@ -41,6 +41,7 @@ interface WavesurferComponentProps {
 
 const WavesurferComponent = ({ args }: WavesurferComponentProps) => {
     const [ready, setReady] = useState(false);
+    const [updatedRegions, setUpdatedRegions] = useState<Region[]>([]);
 
     useEffect(() => {
         Streamlit.setFrameHeight();
@@ -53,6 +54,17 @@ const WavesurferComponent = ({ args }: WavesurferComponentProps) => {
     const audioSrc = args.audio_src;
     console.log(`audioSrc: ${audioSrc}`);
 
+    // Report updated regions back to Streamlit when they change
+    useEffect(() => {
+        if (updatedRegions.length > 0) {
+            console.log("Sending updated regions to Streamlit:", updatedRegions);
+            Streamlit.setComponentValue({
+                ready: ready,
+                regions: updatedRegions
+            });
+        }
+    }, [updatedRegions, ready]);
+
     const wavesurfer = (
         <WavesurferViewer
             audioSrc={audioSrc}
@@ -62,8 +74,15 @@ const WavesurferComponent = ({ args }: WavesurferComponentProps) => {
                 console.log("Ready state:", ready);
                 if (!ready) {
                     setReady(true);
-                    setTimeout(() => Streamlit.setComponentValue(1), 300);
+                    setTimeout(() => Streamlit.setComponentValue({
+                        ready: true,
+                        regions: regions
+                    }), 300);
                 }
+            }}
+            onRegionsChange={(regions) => {
+                console.log("Regions changed:", regions);
+                setUpdatedRegions(regions);
             }}
         />
     );
