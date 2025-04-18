@@ -1,0 +1,6 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+DO NOT USE NPM, use bun for the package manager

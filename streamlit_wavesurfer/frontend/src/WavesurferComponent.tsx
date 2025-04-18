@@ -3,9 +3,9 @@ import {
     StreamlitComponentBase,
     withStreamlitConnection,
 } from "streamlit-component-lib"
-import React, { ReactNode, useEffect } from "react"
+import React, { ReactNode } from "react"
 import { WavesurferViewer, Region } from "./components/WaveformViewer"
-import "./components/Styles.css"
+
 
 interface State {
     ready: Boolean
