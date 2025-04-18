@@ -1,10 +1,10 @@
 import React from "react"
 import ReactDOM from "react-dom"
-import MyComponent from "./MyComponent"
+import WavesurferComponent from "./WavesurferComponent"
 
 ReactDOM.render(
   <React.StrictMode>
-    <MyComponent />
+    <WavesurferComponent />
   </React.StrictMode>,
   document.getElementById("root")
 )

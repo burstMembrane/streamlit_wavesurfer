@@ -12,14 +12,15 @@
     "@types/node": "^20.10.3",
     "@types/react": "^17.0.71",
     "@types/react-dom": "^17.0.25",
+    "chart.js": "^4.4.1",
+    "lucide-react": "^0.488.0",
     "react": "^17.0.2",
+    "react-chartjs-2": "^5.2.0",
     "react-dom": "^17.0.2",
     "react-scripts": "^5.0.1",
     "streamlit-component-lib": "^2.0.0",
     "typescript": "^3.2.1",
-    "wavesurfer.js": "^7.4.13",
-    "react-chartjs-2": "^5.2.0",
-    "chart.js": "^4.4.1"
+    "wavesurfer.js": "^7.4.13"
   },
   "scripts": {
     "start": "react-scripts --openssl-legacy-provider  start",

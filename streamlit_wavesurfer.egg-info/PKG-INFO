@@ -1,0 +1,12 @@
+Metadata-Version: 2.4
+Name: streamlit_wavesurfer
+Version: 0.0.3
+Home-page: 
+Author: 
+Author-email: 
+Requires-Python: >=3.6
+Description-Content-Type: text/plain
+Requires-Dist: streamlit>=0.63
+Dynamic: description-content-type
+Dynamic: requires-dist
+Dynamic: requires-python
