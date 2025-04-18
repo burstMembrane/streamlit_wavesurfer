@@ -5,6 +5,24 @@ import {
 import React, { useEffect, useState } from "react"
 import { WavesurferViewer, Region } from "./components/WaveformViewer"
 
+
+export interface WaveSurferUserOptions {
+    waveColor?: string;
+    progressColor?: string;
+    cursorWidth?: number;
+    minPxPerSec?: number;
+    fillParent?: boolean;
+    height?: number | "auto" | undefined;
+    width?: number | "auto" | undefined;
+    barWidth?: number;
+    barGap?: number;
+    barRadius?: number;
+    normalize?: boolean;
+    hideScrollbar?: boolean;
+}
+
+
+
 interface WavesurferComponentProps {
     args: {
         regions: Array<{
@@ -16,6 +34,8 @@ interface WavesurferComponentProps {
             resize?: boolean;
         }>;
         audio_src: string;
+        wave_options: WaveSurferUserOptions;
+
     };
 }
 
@@ -25,6 +45,7 @@ const WavesurferComponent = ({ args }: WavesurferComponentProps) => {
     useEffect(() => {
         Streamlit.setFrameHeight();
     });
+    const waveOptions = args.wave_options;
 
     const regions = args.regions ?
         args.regions.map((e) => new Region(e.start, e.end, e.content, e.color, e.drag, e.resize)) :
@@ -36,6 +57,7 @@ const WavesurferComponent = ({ args }: WavesurferComponentProps) => {
         <WavesurferViewer
             audioSrc={audioSrc}
             regions={regions}
+            waveOptions={waveOptions}
             onReady={() => {
                 console.log("Ready state:", ready);
                 if (!ready) {

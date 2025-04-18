@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import WaveSurfer from 'wavesurfer.js';
-import WaveSurferOptions from 'wavesurfer.js';
+
 import RegionsPlugin from "wavesurfer.js/dist/plugins/regions.js"
 import TimelinePlugin from "wavesurfer.js/dist/plugins/timeline.js"
 import { Play, Pause, SkipBack, SkipForward } from 'lucide-react';
-
+import { WaveSurferUserOptions } from '../WavesurferComponent';
 export interface Region {
     start: number;
     end: number;
@@ -22,10 +22,11 @@ export class Region {
 export interface WavesurferViewerProps {
     audioSrc: string;
     regions?: Region[];
+    waveOptions: WaveSurferUserOptions;
     onReady: () => void;
 }
 
-export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, regions = [], onReady }) => {
+export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, regions = [], onReady, waveOptions }) => {
     const waveformRef = useRef<HTMLDivElement>(null);
     const [waveform, setWaveform] = useState<WaveSurfer | null>(null);
     const [wsRegions, setWsRegions] = useState<RegionsPlugin | null>(null);
@@ -38,12 +39,10 @@ export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, re
 
     const getWsOptions = () => ({
         container: waveformRef.current!,
-        waveColor: 'violet',
-        progressColor: 'purple',
         responsive: true,
         xhr: { cache: 'default', mode: 'no-cors' },
-        autoScroll: true,
         normalize: true,
+        ...waveOptions
     });
 
     const updateRegions = (regions: Region[]) => {
@@ -71,7 +70,9 @@ export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, re
     useEffect(() => {
         if (!waveformRef.current) return;
 
-        const ws = WaveSurfer.create(getWsOptions());
+        const ws = WaveSurfer.create({
+            ...getWsOptions(),
+        });
         const regionsPlugin = ws.registerPlugin(RegionsPlugin.create());
         const timelinePlugin = ws.registerPlugin(TimelinePlugin.create({
             height: 10,
