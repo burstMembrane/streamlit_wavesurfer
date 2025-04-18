@@ -20,6 +20,7 @@
     "react-scripts": "^5.0.1",
     "streamlit-component-lib": "^2.0.0",
     "typescript": "^3.2.1",
+    "use-undo": "^1.1.1",
     "wavesurfer.js": "^7.4.13"
   },
   "scripts": {

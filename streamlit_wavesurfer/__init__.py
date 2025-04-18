@@ -24,6 +24,34 @@ class Region:
     drag: bool = False
     resize: bool = False
 
+    def to_dict(self):
+        return {
+            "start": self.start,
+            "end": self.end,
+            "content": self.content,
+            "color": self.color,
+        }
+
+
+@dataclass
+class RegionList:
+    regions: List[Region]
+
+    def to_dict(self):
+        return [region for region in self.regions]
+
+    def __next__(self):
+        return next(self.regions)
+
+    def __iter__(self):
+        return iter(self.regions)
+
+    def __len__(self):
+        return len(self.regions)
+
+    def __getitem__(self, index):
+        return self.regions[index]
+
 
 @dataclass
 class WaveSurferOptions:
@@ -133,7 +161,7 @@ def resolve_audio_src(audio_src: str) -> str:
 
 def wavesurfer(
     audio_src: str,
-    regions: List[Region],
+    regions: RegionList,
     key: Optional[str] = None,
     wave_options: WaveSurferOptions = None,
 ) -> bool:
@@ -153,6 +181,7 @@ def wavesurfer(
 
     component_value = _component_func(
         audio_src=audio_url,
+        regions=regions.to_dict(),
         key=key,
         default=0,
         wave_options=wave_options.to_dict(),
@@ -160,8 +189,8 @@ def wavesurfer(
     return bool(component_value)
 
 
-# For development, displays stub audio_selector.
 if not _RELEASE:
+    import json
     import random
     from pathlib import Path
 
@@ -170,20 +199,13 @@ if not _RELEASE:
     st.set_page_config(layout="wide")
 
     regions = []
-    for e in range(30):
-        regions.append(
-            Region(
-                start=1.0 + e,
-                end=2.0 + e,
-                content=f"hello{e}" * random.randrange(1, 4),
-            )
-        )
 
-    # debug with st audio
+    regions_path = Path(__file__).parent / "frontend" / "public" / "because.json"
+    with open(regions_path, "r") as f:
+        regions = json.load(f)
+    regions = RegionList(regions)
     audio_file_path = Path(__file__).parent / "frontend" / "public" / "because.mp3"
-    st.write(f"DEBUG: {audio_file_path}")
-    # st.audio(str(audio_file_path.absolute()))
-
+    print(regions)
     num_clicks = wavesurfer(
         audio_src=str(audio_file_path.absolute()),
         regions=regions,

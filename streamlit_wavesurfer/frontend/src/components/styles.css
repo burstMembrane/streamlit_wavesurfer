@@ -1,0 +1,38 @@
+#waveform {
+    font-family: 'Inter', sans-serif;
+}
+
+#waveform ::part(cursor) {
+    opacity: 0.8;
+
+}
+
+
+
+
+#waveform ::part(marker) {
+    /* abbreviate text */
+    font-size: 0.85rem;
+    /* make text bold */
+    font-weight: 500;
+    /* ensure text is centered */
+    text-align: left;
+    /* ensure text is white */
+    color: #ccc;
+    padding: 0;
+    margin: 0;
+}
+
+#waveform ::part(region-content) {
+    margin-top: 1rem;
+
+    text-decoration: none;
+    text-overflow: ellipsis;
+}
+
+#waveform ::part(region-handle-right) {}
+
+#waveform ::part(region) {}
+
+
+#waveform ::part(marker-text) {}
