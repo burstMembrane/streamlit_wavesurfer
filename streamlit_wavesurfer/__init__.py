@@ -251,15 +251,23 @@ if not _RELEASE:
     import pandas as pd
     import streamlit as st
 
+    @st.cache_data
+    def regions() -> List[Region]:
+        """Sample regions from the audio file."""
+        regions_path = Path(__file__).parent / "frontend" / "public" / "because.json"
+        with open(regions_path, "r") as f:
+            regions = json.load(f)
+        return regions
+
+    @st.cache_data
+    def audio_src() -> str:
+        """Sample audio source from the audio file."""
+        audio_path = Path(__file__).parent / "frontend" / "public" / "because.mp3"
+        return str(audio_path.absolute())
+
     st.set_page_config(layout="wide")
 
-    regions = []
-
-    regions_path = Path(__file__).parent / "frontend" / "public" / "because.json"
-    with open(regions_path, "r") as f:
-        regions = json.load(f)
-
-    regions = RegionList(regions)
+    regions = RegionList(regions())
     audio_file_path = Path(__file__).parent / "frontend" / "public" / "because.mp3"
     # colormap selection
     colormap_selection = st.selectbox(
@@ -280,14 +288,11 @@ if not _RELEASE:
     if "regions" not in st.session_state:
         st.session_state.regions = regions
 
-    # Get the current regions from session state or use the default
-    current_regions = st.session_state.regions
-
     # Create the wavesurfer component
     state = wavesurfer(
         audio_src=str(audio_file_path.absolute()),
         key="wavesurfer",
-        regions=current_regions,
+        regions=st.session_state.regions,
         wave_options=WaveSurferOptions(
             waveColor=wavecolor_selection,
             progressColor=progresscolor_selection,
@@ -299,18 +304,16 @@ if not _RELEASE:
         show_spectrogram=False,
     )
 
-    # Update the regions in session state when changes are made
-    if state and state.get("regions"):
-        # Update the session state with the new regions
-        # check if they are the same
-        if st.session_state.regions != RegionList(state["regions"]):
+    # Only update session_state.regions when state["ts"] is new
+    if state and "ts" in state:
+        last_ts = st.session_state.get("_last_ts", None)
+        if state["ts"] != last_ts:
             st.session_state.regions = RegionList(state["regions"])
-            # Display the regions in a dataframe
-        df = pd.DataFrame(
-            st.session_state.regions.to_dict(),
-            columns=["id", "start", "end", "content"],
-        )
-        # it should be ordered id, start end, content
-        st.dataframe(
-            df,
-        )
+            st.session_state["_last_ts"] = state["ts"]
+
+    # Display whatever is in session_state.regions
+    df = pd.DataFrame(
+        st.session_state.regions.to_dict(),
+        columns=["id", "start", "end", "content"],
+    )
+    st.dataframe(df)

@@ -29,7 +29,7 @@ export interface WavesurferComponentProps {
 
 const WavesurferComponent = ({ args }: WavesurferComponentProps) => {
     const [ready, setReady] = useState(false);
-    const [updatedRegions, setUpdatedRegions] = useState<Region[]>([]);
+
 
 
     useEffect(() => {
@@ -38,38 +38,18 @@ const WavesurferComponent = ({ args }: WavesurferComponentProps) => {
 
     const waveOptions = args.wave_options;
 
-    const regions = args.regions ?
-        args.regions.map((e) => new Region(e.id, e.start, e.end, e.content, e.color, e.drag, e.resize)) :
-        [];
+    const regions = args.regions;
     const audioSrc = args.audio_src;
-    console.log(`audioSrc: ${audioSrc}`);
 
-
-    useEffect(() => {
-        if (updatedRegions.length > 0) {
-            const filteredRegions = updatedRegions.filter((region) => region.start > 0 && region.end > 0);
-
-            const uniqueRegions = filteredRegions.filter((region, index, self) =>
-                index === self.findIndex((t) => t.id === region.id)
-            );
-
-
-            Streamlit.setComponentValue({
-                ready: ready,
-                regions: uniqueRegions.map((region) => ({
-                    id: region.id,
-                    content: region.content,
-                    start: region.start,
-                    end: region.end
-                }))
-            });
-        }
-    }, [updatedRegions]);
 
     // This handles the save button click
     const onRegionsChange = (regions: Region[]) => {
-        console.log("Regions saved:", regions);
-        setUpdatedRegions(regions);
+        const ts = Date.now();
+        Streamlit.setComponentValue({
+            ready,
+            regions,
+            ts,
+        });
     };
 
     const wavesurfer = (

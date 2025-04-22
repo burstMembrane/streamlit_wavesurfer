@@ -10,9 +10,9 @@
 - [x] Keyboard shortcuts for nudge etc
 - [ ] Load audio from numpy arrays
 - [ ] Region validation from python?
-- [ ] Spectrogram view (is this another component?)
+- [x] Spectrogram view (is this another component?)
 
 ## Bug Fixes
 
-- [ ] Region state management -- need one source of truth, never double up regions (can we use react query?)
+- [x] Region state management -- need one source of truth, never double up regions (can we use react query?)
 - [ ] FIX: need to press a btton before keyboard shortcuts work.
