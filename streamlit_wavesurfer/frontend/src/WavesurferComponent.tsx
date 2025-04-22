@@ -3,7 +3,8 @@ import {
     withStreamlitConnection,
 } from "streamlit-component-lib"
 import React, { useEffect, useState } from "react"
-import { WavesurferViewer, Region } from "./components/WaveformViewer"
+import { WavesurferViewer } from "./components/waveformviewer/WaveformViewer"
+import { Region } from "./types"
 
 
 export interface WaveSurferUserOptions {
