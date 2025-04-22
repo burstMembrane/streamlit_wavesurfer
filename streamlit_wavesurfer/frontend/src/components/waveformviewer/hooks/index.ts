@@ -1,6 +1,9 @@
 import { useCallback, useMemo } from "react";
 import colormap from 'colormap'
-import { Region } from "../../../types";
+import { Region } from "../types";
+export * from "./useRegions";
+export * from "./useWaveSurfer";
+export * from "./useWaveSurferHotkeys";
 
 // Hook for formatting time
 export const useTimeFormatter = () => {

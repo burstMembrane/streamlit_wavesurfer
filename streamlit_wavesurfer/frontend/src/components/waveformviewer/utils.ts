@@ -1,3 +1,8 @@
+import { Region } from "./types"
+export const buildRegionId = (region: Region) => {
+    return `region-${btoa(JSON.stringify({ content: region.content, start: region.start, end: region.end }))}`;
+};
+
 export const lightenColor = (color: string): string => {
     // Handle rgba format
     if (color.startsWith('rgba(')) {

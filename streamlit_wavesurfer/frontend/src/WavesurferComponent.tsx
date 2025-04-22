@@ -4,27 +4,11 @@ import {
 } from "streamlit-component-lib"
 import React, { useEffect, useState } from "react"
 import { WavesurferViewer } from "./components/waveformviewer/WaveformViewer"
-import { Region } from "./types"
+import { Region } from "./components/waveformviewer/types"
+import { WaveSurferUserOptions } from "./components/waveformviewer/types"
 
 
-export interface WaveSurferUserOptions {
-    waveColor?: string;
-    progressColor?: string;
-    cursorWidth?: number;
-    minPxPerSec?: number;
-    fillParent?: boolean;
-    height?: number | "auto" | undefined;
-    width?: number | "auto" | undefined;
-    barWidth?: number;
-    barGap?: number;
-    barRadius?: number;
-    normalize?: boolean;
-    hideScrollbar?: boolean;
-}
-
-
-
-interface WavesurferComponentProps {
+export interface WavesurferComponentProps {
     args: {
         regions: Array<{
             id: string;
