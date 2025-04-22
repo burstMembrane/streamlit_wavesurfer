@@ -248,6 +248,7 @@ if not _RELEASE:
     import json
     from pathlib import Path
 
+    import pandas as pd
     import streamlit as st
 
     st.set_page_config(layout="wide")
@@ -257,6 +258,7 @@ if not _RELEASE:
     regions_path = Path(__file__).parent / "frontend" / "public" / "because.json"
     with open(regions_path, "r") as f:
         regions = json.load(f)
+
     regions = RegionList(regions)
     audio_file_path = Path(__file__).parent / "frontend" / "public" / "because.mp3"
     # colormap selection
@@ -274,11 +276,18 @@ if not _RELEASE:
         progresscolor_selection = st.color_picker(
             "Select a progress color", value="#3F51B5"
         )
-    last_state = None
+    # Initialize regions in session state if not already present
+    if "regions" not in st.session_state:
+        st.session_state.regions = regions
+
+    # Get the current regions from session state or use the default
+    current_regions = st.session_state.regions
+
+    # Create the wavesurfer component
     state = wavesurfer(
         audio_src=str(audio_file_path.absolute()),
         key="wavesurfer",
-        regions=regions,
+        regions=current_regions,
         wave_options=WaveSurferOptions(
             waveColor=wavecolor_selection,
             progressColor=progresscolor_selection,
@@ -289,5 +298,19 @@ if not _RELEASE:
         region_colormap=colormap_selection,
         show_spectrogram=False,
     )
+
+    # Update the regions in session state when changes are made
     if state and state.get("regions"):
-        pprint(state["regions"])
+        # Update the session state with the new regions
+        # check if they are the same
+        if st.session_state.regions != RegionList(state["regions"]):
+            st.session_state.regions = RegionList(state["regions"])
+            # Display the regions in a dataframe
+        df = pd.DataFrame(
+            st.session_state.regions.to_dict(),
+            columns=["id", "start", "end", "content"],
+        )
+        # it should be ordered id, start end, content
+        st.dataframe(
+            df,
+        )

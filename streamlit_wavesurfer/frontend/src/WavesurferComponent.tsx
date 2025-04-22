@@ -46,9 +46,11 @@ const WavesurferComponent = ({ args }: WavesurferComponentProps) => {
     const [ready, setReady] = useState(false);
     const [updatedRegions, setUpdatedRegions] = useState<Region[]>([]);
 
+
     useEffect(() => {
         Streamlit.setFrameHeight();
     });
+
     const waveOptions = args.wave_options;
 
     const regions = args.regions ?
@@ -57,14 +59,19 @@ const WavesurferComponent = ({ args }: WavesurferComponentProps) => {
     const audioSrc = args.audio_src;
     console.log(`audioSrc: ${audioSrc}`);
 
-    // Report updated regions back to Streamlit when they change
+
     useEffect(() => {
         if (updatedRegions.length > 0) {
-
             const filteredRegions = updatedRegions.filter((region) => region.start > 0 && region.end > 0);
+
+            const uniqueRegions = filteredRegions.filter((region, index, self) =>
+                index === self.findIndex((t) => t.id === region.id)
+            );
+
+
             Streamlit.setComponentValue({
                 ready: ready,
-                regions: filteredRegions.map((region) => ({
+                regions: uniqueRegions.map((region) => ({
                     id: region.id,
                     content: region.content,
                     start: region.start,
@@ -72,7 +79,13 @@ const WavesurferComponent = ({ args }: WavesurferComponentProps) => {
                 }))
             });
         }
-    }, [updatedRegions, ready]);
+    }, [updatedRegions]);
+
+    // This handles the save button click
+    const onRegionsChange = (regions: Region[]) => {
+        console.log("Regions saved:", regions);
+        setUpdatedRegions(regions);
+    };
 
     const wavesurfer = (
         <WavesurferViewer
@@ -80,7 +93,7 @@ const WavesurferComponent = ({ args }: WavesurferComponentProps) => {
             regions={regions}
             waveOptions={waveOptions}
             onReady={() => {
-                console.log("Ready state:", ready);
+
                 if (!ready) {
                     setReady(true);
                     setTimeout(() => Streamlit.setComponentValue({
@@ -89,10 +102,7 @@ const WavesurferComponent = ({ args }: WavesurferComponentProps) => {
                     }), 300);
                 }
             }}
-            onRegionsChange={(regions) => {
-                console.log("Regions changed:", regions);
-                setUpdatedRegions(regions);
-            }}
+            onRegionsChange={onRegionsChange}
             regionColormap={args.region_colormap}
             showSpectrogram={args.show_spectrogram}
         />

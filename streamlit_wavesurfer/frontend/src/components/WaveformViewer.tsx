@@ -8,6 +8,7 @@ import { WaveSurferUserOptions } from '../WavesurferComponent';
 import { lightenColor } from '../utils';
 import colormap from 'colormap'
 import './styles.css';
+import { debounce } from 'wavesurfer.js/src/util';
 export interface Region {
     id: string | undefined;
     start: number;
@@ -60,14 +61,8 @@ export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, re
     const getTargetRegion = () => {
         return activeRegionRef.current || regionUnderCursor;
     };
-
-    // Reference to store active region between renders
     const activeRegionRef = useRef<any>(null);
-
-    // Keep track of region original colors to restore them when a region is no longer active
     const [regionOriginalColors, setRegionOriginalColors] = useState<Record<string, string>>({});
-
-    // Generate colors from the colormap based on userColormap and number of regions
     useEffect(() => {
         if (regions.length === 0) return;
 
@@ -81,27 +76,18 @@ export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, re
             format: 'rgbaString',
             alpha: 0.2 // Reduced alpha for more muted colors
         });
-
-
-        console.log('Generated colors:', generatedColors);
-
         setColors(generatedColors);
     }, [regionColormap, regions.length]);
 
 
 
-    // Function to send updated regions to parent
+    // Function to send updated regions to parent - simplified version
     const reportRegionsToParent = () => {
         if (!wsRegions || !onRegionsChange) return;
 
-        // Get all current regions from wavesurfer
         const currentRegions = wsRegions.getRegions();
-        console.log(`Reporting ${currentRegions.length} regions to parent`);
-
-        // Convert to the Region interface expected by the parent
         const regionsForParent = currentRegions.map(wsRegion => {
             let content = '';
-            // Convert HTMLElement to string or use string directly
             if (typeof wsRegion.content === 'string') {
                 content = wsRegion.content;
             } else if (wsRegion.content instanceof HTMLElement) {
@@ -114,31 +100,22 @@ export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, re
                 end: wsRegion.end,
                 content: content,
                 color: wsRegion.color,
-                drag: wsRegion.drag,
-                resize: wsRegion.resize
             };
         });
 
-
+        console.log(`Reporting ${regionsForParent.length} regions to parent`);
         onRegionsChange(regionsForParent);
     };
 
     // Update region boundaries after edit operations
     const updateRegionBoundary = (targetRegion: any, options: any) => {
         if (!targetRegion) return;
-
-        // Apply the options to the region
         targetRegion.setOptions(options);
-
     };
 
 
 
 
-    useEffect(() => {
-        // Keep ref in sync with state
-        activeRegionRef.current = activeRegion;
-    }, [activeRegion]);
 
     const getWsOptions = () => ({
         container: waveformRef.current!,
@@ -473,68 +450,32 @@ export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, re
         };
     }, [audioSrc]);
 
-    // Add regions after both waveform and colors are ready
     useEffect(() => {
         if (!waveformReady || !wsRegions || colors.length === 0) {
             return;
         }
 
-        // Skip if no regions to add
         if (regions.length === 0) {
-            // Clear regions if array is empty
             wsRegions.clearRegions();
             return;
         }
-
-        console.log('Adding regions with colors:', colors);
-
-        // To avoid memory leaks and duplicate regions, use a more careful approach
-        // Get existing region IDs
-        const existingRegionIds = wsRegions.getRegions().map(r => r.id);
-        console.log('Existing region IDs:', existingRegionIds);
-
-        // Clear all regions to prevent duplicates and memory leaks
         wsRegions.clearRegions();
-
-        // Track the regions we're adding for debugging
-        const addedRegions: string[] = [];
-        // filter duoplicate regions
-        const uniqueRegions = regions.filter((region, index, self) =>
-            index === self.findIndex((t) => (
-                t.id === buildRegionId(region) ||
-                (t.start === region.start && t.end === region.end && t.content === region.content)
-            ))
-        );
-        // Add regions with colors
-        uniqueRegions.forEach((region, index) => {
+        regions.forEach((region, index) => {
             if (!region.start || !region.end) return;
-
-            // Make sure color index is within bounds
             const colorIndex = index % colors.length;
-            const regionId = buildRegionId(region);
-            console.log(`Adding region ${index} with ID ${regionId} and color:`, colors[colorIndex]);
-
-            try {
-
-                const newRegion = wsRegions.addRegion({
-                    start: region.start,
-                    end: region.end,
-                    content: region.content,
-                    id: regionId,
-                    color: colors[colorIndex] || `rgba(100, 100, 100, 0.5)`,
-                    drag: region.drag,
-                    resize: region.resize,
-                });
-                addedRegions.push(newRegion.id);
-            } catch (e) {
-                console.error('Error adding region:', e);
-            }
+            const regionId = region.id || buildRegionId(region);
+            wsRegions.addRegion({
+                start: region.start,
+                end: region.end,
+                content: region.content,
+                id: regionId,
+                color: colors[colorIndex] || `rgba(100, 100, 100, 0.5)`,
+                drag: region.drag,
+                resize: region.resize,
+            });
         });
 
-        console.log(`Added ${addedRegions.length} regions with IDs:`, addedRegions);
-
-
-    }, [regions, colors]);
+    }, [regions, wsRegions]);
 
     return (
         <div style={{
@@ -636,7 +577,7 @@ export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, re
                             reportRegionsToParent();
                         }}
                         style={{
-                            background: '#4CAF50',
+                            background: '#1f1f1f',
                             border: 'none',
                             borderRadius: '4px',
                             cursor: 'pointer',
