@@ -2,8 +2,9 @@
 
 TODO:
 
-- [ ] Styling customization
-- [ ] Play pause/skip buttons
-- [ ] Region start and end callbacks
+- [x] Styling customization
+- [x] Play pause/skip buttons
+- [x] Region start and end callbacks
+- [ ] FIX: need to press a btton before keyboard shortcuts work.
 - [ ] Load audio from numpy arrays
-- [ ] Keyboard shortcuts for nudge etc
+- [x] Keyboard shortcuts for nudge etc
