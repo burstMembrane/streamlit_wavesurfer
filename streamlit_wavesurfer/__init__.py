@@ -287,12 +287,13 @@ if not _RELEASE:
     # Initialize regions in session state if not already present
     if "regions" not in st.session_state:
         st.session_state.regions = regions
+        st.session_state._last_ts = 0
 
     # Create the wavesurfer component
     state = wavesurfer(
         audio_src=str(audio_file_path.absolute()),
         key="wavesurfer",
-        regions=st.session_state.regions,
+        regions=st.session_state.regions,  # Always use the current session state regions
         wave_options=WaveSurferOptions(
             waveColor=wavecolor_selection,
             progressColor=progresscolor_selection,
@@ -306,7 +307,7 @@ if not _RELEASE:
 
     # Only update session_state.regions when state["ts"] is new
     if state and "ts" in state:
-        last_ts = st.session_state.get("_last_ts", None)
+        last_ts = st.session_state.get("_last_ts", 0)
         if state["ts"] != last_ts:
             st.session_state.regions = RegionList(state["regions"])
             st.session_state["_last_ts"] = state["ts"]

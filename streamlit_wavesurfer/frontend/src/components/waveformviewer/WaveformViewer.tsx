@@ -1,9 +1,90 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Play, Pause, SkipBack, SkipForward, Save } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Save, Keyboard } from 'lucide-react';
 import { WavesurferViewerProps } from "./types"
 import { useRegions, useWaveSurfer, useWaveSurferHotkeys, useTimeFormatter, useRegionColors } from './hooks';
 import './styles.css';
+import { HotkeysProvider } from 'react-hotkeys-hook';
 
+// KeyboardShortcuts component to display available shortcuts
+const KeyboardShortcuts = ({ showAll = false }) => {
+    const [showShortcuts, setShowShortcuts] = useState(false);
+
+    const allShortcuts = [
+        { key: 'i', description: 'set region start' },
+        { key: 'o', description: 'set region end' },
+        { key: 's', description: 'play region start' },
+        { key: 'e', description: 'play region end' },
+        { key: 'space', description: 'play/pause' },
+        { key: '↑', description: 'prev region' },
+        { key: '↓', description: 'next region' },
+        { key: '←', description: 'seek -0.1s' },
+        { key: '→', description: 'seek +0.1s' },
+        { key: 'l', description: 'loop region' },
+        { key: 'w', description: 'skip to start' }
+    ];
+
+    const basicShortcuts = allShortcuts.filter(s =>
+        ['space', '←', '→'].includes(s.key)
+    );
+
+    const shortcuts = showAll ? allShortcuts : basicShortcuts;
+
+    return (
+        <div style={{ position: 'relative' }}>
+            <button
+                onClick={() => setShowShortcuts(!showShortcuts)}
+                style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '5px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'white'
+                }}
+            >
+                <Keyboard size={20} />
+            </button>
+
+            {showShortcuts && (
+                <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    right: 0,
+                    backgroundColor: '#333',
+                    padding: '10px',
+                    borderRadius: '5px',
+                    boxShadow: '0 2px 10px rgba(0, 0, 0, 0.2)',
+                    zIndex: 1000,
+                    width: '300px',
+                }}>
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'auto 1fr',
+                        gap: '8px 12px',
+                        color: 'white',
+                    }}>
+                        {shortcuts.map((shortcut) => (
+                            <React.Fragment key={shortcut.key}>
+                                <div style={{
+                                    fontWeight: 'bold',
+                                    padding: '2px 6px',
+                                    backgroundColor: '#555',
+                                    borderRadius: '3px',
+                                    textAlign: 'center'
+                                }}>
+                                    {shortcut.key}
+                                </div>
+                                <div>{shortcut.description}</div>
+                            </React.Fragment>
+                        ))}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
 
 // Main component - update to pass loopRegion to hooks
 export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({
@@ -89,179 +170,142 @@ export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({
     }, [zoomLevel, waveform, waveformReady]);
 
     return (
-        <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '10px',
-            padding: '20px',
-            width: '100%',
-            boxSizing: 'border-box'
-        }}>
-            <div ref={waveformRef}
-                id="waveform"
-                style={{
-                    width: "100%",
-                    minHeight: '200px',
-                    marginBottom: '20px'
-                }} />
-
+        <HotkeysProvider>
             <div style={{
                 display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '15px',
-                borderRadius: '10px',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                flexDirection: 'column',
+                gap: '10px',
+                padding: '20px',
                 width: '100%',
                 boxSizing: 'border-box'
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <button
-                        onClick={skipBackward}
-                        style={{
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            padding: '5px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: 'white'
-                        }}
-                    >
-                        <SkipBack size={20} />
-                    </button>
-
-                    <button
-                        onClick={isPlaying ? pause : play}
-                        style={{
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            padding: '5px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: 'white'
-                        }}
-                    >
-                        {!isPlaying ? <Play size={24} /> : <Pause size={24} />}
-                    </button>
-
-                    <button
-                        onClick={skipForward}
-                        style={{
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            padding: '5px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: 'white'
-                        }}
-                    >
-                        <SkipForward size={20} />
-                    </button>
-
-                    <button
-                        onClick={reportRegionsToParent}
-                        style={{
-                            background: '#1f1f1f',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            padding: '5px 10px',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: 'white',
-                            marginLeft: '10px',
-                            // Hide save button when no regions
-                            display: regions.length > 0 ? 'flex' : 'none'
-                        }}
-                    >
-                        <Save size={16} style={{ marginRight: '5px' }} />
-                        Save Regions
-                    </button>
-                </div>
+                <div ref={waveformRef}
+                    id="waveform"
+                    style={{
+                        width: "100%",
+                        minHeight: '200px',
+                        marginBottom: '20px'
+                    }} />
 
                 <div style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '10px',
-                    color: 'white'
+                    justifyContent: 'space-between',
+                    padding: '15px',
+                    borderRadius: '10px',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                    width: '100%',
+                    boxSizing: 'border-box'
                 }}>
-                    <span>{formatTime(currentTime)}</span>
-                    <span>/</span>
-                    <span>{formatTime(duration)}</span>
-                </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <button
+                            onClick={skipBackward}
+                            style={{
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                padding: '5px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: 'white'
+                            }}
+                        >
+                            <SkipBack size={20} />
+                        </button>
 
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    minWidth: '200px'
-                }}>
-                    <span>Zoom</span>
-                    <input
-                        type="range"
-                        min={1}
-                        max={350}
-                        value={zoomLevel}
-                        onChange={(e) => {
-                            const value = Number(e.target.value);
-                            setZoom(value);
-                        }}
-                        style={{
-                            width: '100px',
-                            flex: '1'
-                        }}
-                    />
-                </div>
+                        <button
+                            onClick={isPlaying ? pause : play}
+                            style={{
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                padding: '5px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: 'white'
+                            }}
+                        >
+                            {!isPlaying ? <Play size={24} /> : <Pause size={24} />}
+                        </button>
 
-                {/* keyboard hints - only show if regions exist */}
-                {regions.length > 0 && (
+                        <button
+                            onClick={skipForward}
+                            style={{
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                padding: '5px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: 'white'
+                            }}
+                        >
+                            <SkipForward size={20} />
+                        </button>
+
+                        <button
+                            onClick={reportRegionsToParent}
+                            style={{
+                                background: '#1f1f1f',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                padding: '5px 10px',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: 'white',
+                                marginLeft: '10px',
+                                // Hide save button when no regions
+                                display: regions.length > 0 ? 'flex' : 'none'
+                            }}
+                        >
+                            <Save size={16} style={{ marginRight: '5px' }} />
+                            Save Regions
+                        </button>
+                    </div>
+
                     <div style={{
                         display: 'flex',
                         alignItems: 'center',
-                        flexDirection: 'row',
-                        flexWrap: 'wrap',
                         gap: '10px',
-                        color: 'white',
-                        maxWidth: '600px'
+                        color: 'white'
                     }}>
-                        <span><b>i</b>: set region start</span>
-                        <span><b>o</b>: set region end</span>
-                        <span><b>s</b>: play region start</span>
-                        <span><b>e</b>: play region end</span>
-                        <span><b>space</b>: play/pause</span>
-                        <span><b>↑</b>: prev region</span>
-                        <span><b>↓</b>: next region</span>
-                        <span><b>←</b>: seek -0.1s</span>
-                        <span><b>→</b>: seek +0.1s</span>
-                        <span><b>l</b>: loop region</span>
-                        <span><b>w</b>: skip to start</span>
+                        <span>{formatTime(currentTime)}</span>
+                        <span>/</span>
+                        <span>{formatTime(duration)}</span>
                     </div>
-                )}
 
-                {/* Only show basic keyboard shortcuts if no regions */}
-                {regions.length === 0 && (
                     <div style={{
                         display: 'flex',
                         alignItems: 'center',
-                        flexDirection: 'row',
-                        flexWrap: 'wrap',
                         gap: '10px',
-                        color: 'white',
-                        maxWidth: '300px'
+                        minWidth: '200px'
                     }}>
-                        <span><b>space</b>: play/pause</span>
-                        <span><b>←</b>: seek -0.1s</span>
-                        <span><b>→</b>: seek +0.1s</span>
+                        <span>Zoom</span>
+                        <input
+                            type="range"
+                            min={1}
+                            max={350}
+                            value={zoomLevel}
+                            onChange={(e) => {
+                                const value = Number(e.target.value);
+                                setZoom(value);
+                            }}
+                            style={{
+                                width: '100px',
+                                flex: '1'
+                            }}
+                        />
                     </div>
-                )}
+
+                    {/* Keyboard shortcuts icon */}
+                    <KeyboardShortcuts showAll={regions.length > 0} />
+                </div>
             </div>
-        </div>
+        </HotkeysProvider>
     );
 };
 
