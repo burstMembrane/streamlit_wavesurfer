@@ -1,5 +1,6 @@
-__all__ = ["wavesurfer", "Region"]
-import random
+__all__ = ["wavesurfer", "Region", "RegionColormap", "WaveSurferOptions"]
+
+import difflib
 import urllib.parse
 from dataclasses import dataclass
 from pathlib import Path
@@ -14,6 +15,50 @@ from streamlit.elements.media import AudioProto, marshall_audio
 # When False => run: npm start
 # When True => run: npm run build
 _RELEASE = False
+
+
+colormaps = [
+    "jet",
+    "hsv",
+    "hot",
+    "cool",
+    "spring",
+    "summer",
+    "autumn",
+    "winter",
+    "bone",
+    "copper",
+    "greys",
+    "YIGnBu",
+    "greens",
+    "YIOrRd",
+    "bluered",
+    "RdBu",
+    "picnic",
+    "rainbow",
+    "portland",
+    "blackbody",
+    "earth",
+    "electric",
+]
+
+
+@dataclass
+class RegionColormap:
+    name: str
+
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return self.name
+
+    @classmethod
+    def get_all_colormaps(cls):
+        return colormaps
+
+    def __iter__(self):
+        return iter(self.get_all_colormaps())
 
 
 @dataclass
@@ -68,8 +113,8 @@ class WaveSurferOptions:
     sampleRate: int = 44100
     height: int = 240
     width: int | str = "100%"
-    barWidth: int = 3
-    barGap: int = 1
+    barWidth: int = 0
+    barGap: int = 0
     barRadius: int = 2
     normalize: bool = True
     hideScrollbar: bool = True
@@ -162,9 +207,11 @@ def resolve_audio_src(audio_src: str) -> str:
 
 def wavesurfer(
     audio_src: str,
-    regions: RegionList,
+    regions: Optional[RegionList] | List[Region] | List[dict] = None,
     key: Optional[str] = None,
     wave_options: WaveSurferOptions = None,
+    region_colormap: Optional[str] = None,
+    show_spectrogram: bool = False,
 ) -> bool:
     """Nice audio/video player with audio track selection support.
 
@@ -179,20 +226,26 @@ def wavesurfer(
 
     if not regions:
         regions = []
-
+    # handle case where regions is a list of dicts
+    if isinstance(regions, list) and all(isinstance(r, dict) for r in regions):
+        regions = RegionList(regions)
+    # handle case where regions is empty
+    elif not regions:
+        regions = RegionList([])
     component_value = _component_func(
         audio_src=audio_url,
-        regions=regions.to_dict(),
+        regions=regions.to_dict() if regions else None,
         key=key,
         default=0,
         wave_options=wave_options.to_dict(),
+        region_colormap=region_colormap,
+        show_spectrogram=show_spectrogram,
     )
     return component_value
 
 
 if not _RELEASE:
     import json
-    import random
     from pathlib import Path
 
     import streamlit as st
@@ -206,17 +259,35 @@ if not _RELEASE:
         regions = json.load(f)
     regions = RegionList(regions)
     audio_file_path = Path(__file__).parent / "frontend" / "public" / "because.mp3"
+    # colormap selection
+    colormap_selection = st.selectbox(
+        "Select a colormap",
+        RegionColormap.get_all_colormaps(),
+        # index for each colormap
+        index=colormaps.index("earth"),
+    )
+    cols = st.columns(2)
+    with cols[0]:
+        wavecolor_selection = st.color_picker("Select a wave color", value="#4f4f4f")
 
+    with cols[1]:
+        progresscolor_selection = st.color_picker(
+            "Select a progress color", value="#3F51B5"
+        )
+    last_state = None
     state = wavesurfer(
         audio_src=str(audio_file_path.absolute()),
-        regions=regions,
         key="wavesurfer",
+        regions=regions,
         wave_options=WaveSurferOptions(
-            waveColor="#ddd",
-            progressColor="#3F51B5",
+            waveColor=wavecolor_selection,
+            progressColor=progresscolor_selection,
             autoScroll=True,
             fillParent=True,
             height=300,
         ),
+        region_colormap=colormap_selection,
+        show_spectrogram=False,
     )
-    pprint(state)
+    if state and state.get("regions"):
+        pprint(state["regions"])

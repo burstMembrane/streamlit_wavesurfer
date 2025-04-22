@@ -8,11 +8,7 @@
 
 #waveform ::part(cursor) {
     opacity: 0.8;
-
 }
-
-
-
 
 #waveform ::part(marker) {
     /* abbreviate text */
@@ -28,10 +24,17 @@
 }
 
 #waveform ::part(region-content) {
-    margin-top: 1rem;
-
-    text-decoration: none;
+    display: flex;
+    align-items: center;
+    padding: 0.2rem 0.4rem;
+    margin-top: 0rem;
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
     text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
 }
 
 #waveform ::part(region-handle-right) {

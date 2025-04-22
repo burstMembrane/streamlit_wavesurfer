@@ -21,7 +21,7 @@
     "streamlit-component-lib": "^2.0.0",
     "typescript": "^3.2.1",
     "use-undo": "^1.1.1",
-    "wavesurfer.js": "^7.4.13"
+    "wavesurfer.js": "^7.9.4"
   },
   "scripts": {
     "start": "react-scripts --openssl-legacy-provider  start",
@@ -40,5 +40,9 @@
       "last 1 chrome version"
     ]
   },
-  "homepage": "."
+  "homepage": ".",
+  "devDependencies": {
+    "@types/colormap": "^2.3.4",
+    "@types/wavesurfer.js": "^6.0.12"
+  }
 }

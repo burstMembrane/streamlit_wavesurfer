@@ -1,14 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react';
 import WaveSurfer from 'wavesurfer.js';
-
+import SpectrogramPlugin from 'wavesurfer.js/dist/plugins/spectrogram.js';
 import RegionsPlugin from "wavesurfer.js/dist/plugins/regions.js"
 import TimelinePlugin from "wavesurfer.js/dist/plugins/timeline.js"
 import { Play, Pause, SkipBack, SkipForward, Save } from 'lucide-react';
 import { WaveSurferUserOptions } from '../WavesurferComponent';
 import { lightenColor } from '../utils';
+import colormap from 'colormap'
 import './styles.css';
 export interface Region {
-    id?: string;
+    id: string | undefined;
     start: number;
     end: number;
     content: string;
@@ -18,7 +19,7 @@ export interface Region {
 }
 
 export class Region {
-    constructor(public start: number, public end: number, public content: string, public color?: string, public drag?: boolean, public resize?: boolean) {
+    constructor(public id: string | undefined, public start: number, public end: number, public content: string, public color?: string, public drag?: boolean, public resize?: boolean) {
     }
 }
 
@@ -30,19 +31,23 @@ export interface WavesurferViewerProps {
     waveOptions: WaveSurferUserOptions;
     onReady: () => void;
     onRegionsChange?: (regions: Region[]) => void;
+    regionColormap: string;
+    showSpectrogram: boolean;
 }
 
 const buildRegionId = (region: Region) => {
     return `region-${btoa(JSON.stringify({ content: region.content, start: region.start, end: region.end }))}`;
 }
 
-export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, regions = [], onReady, waveOptions, onRegionsChange }) => {
+export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, regions = [], onReady, waveOptions, onRegionsChange, regionColormap, showSpectrogram }) => {
     const waveformRef = useRef<HTMLDivElement>(null);
     const [waveform, setWaveform] = useState<WaveSurfer | null>(null);
     const [wsRegions, setWsRegions] = useState<RegionsPlugin | null>(null);
+    const [wsSpectrogram, setWsSpectrogram] = useState<SpectrogramPlugin | null>(null);
     const [activeRegion, setActiveRegion] = useState<any>(null);
     const [regionUnderCursor, setRegionUnderCursor] = useState<any>(null);
-
+    const [colors, setColors] = useState<string[]>([]);
+    const [waveformReady, setWaveformReady] = useState(false);
     // Custom region edit history management removed
 
     const [zoomMinPxPerS, setZoomMinPxPerS] = useState(100);
@@ -62,12 +67,36 @@ export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, re
     // Keep track of region original colors to restore them when a region is no longer active
     const [regionOriginalColors, setRegionOriginalColors] = useState<Record<string, string>>({});
 
+    // Generate colors from the colormap based on userColormap and number of regions
+    useEffect(() => {
+        if (regions.length === 0) return;
+
+        // Default to 'jet' colormap if none provided
+        const colorName = regionColormap || 'magma';
+
+        // Generate colors using colormap with lower alpha for more muted colors
+        const generatedColors = colormap({
+            colormap: colorName,
+            nshades: Math.max(regions.length, 10),
+            format: 'rgbaString',
+            alpha: 0.2 // Reduced alpha for more muted colors
+        });
+
+
+        console.log('Generated colors:', generatedColors);
+
+        setColors(generatedColors);
+    }, [regionColormap, regions.length]);
+
+
+
     // Function to send updated regions to parent
     const reportRegionsToParent = () => {
         if (!wsRegions || !onRegionsChange) return;
 
         // Get all current regions from wavesurfer
         const currentRegions = wsRegions.getRegions();
+        console.log(`Reporting ${currentRegions.length} regions to parent`);
 
         // Convert to the Region interface expected by the parent
         const regionsForParent = currentRegions.map(wsRegion => {
@@ -80,6 +109,7 @@ export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, re
             }
 
             return {
+                id: wsRegion.id,
                 start: wsRegion.start,
                 end: wsRegion.end,
                 content: content,
@@ -89,7 +119,7 @@ export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, re
             };
         });
 
-        console.log('Reporting regions to parent:', regionsForParent);
+
         onRegionsChange(regionsForParent);
     };
 
@@ -100,9 +130,8 @@ export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, re
         // Apply the options to the region
         targetRegion.setOptions(options);
 
-        // Report changes to parent
-        reportRegionsToParent();
     };
+
 
 
 
@@ -166,10 +195,9 @@ export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, re
     }, [activeRegion, wsRegions, regionOriginalColors]);
 
     const updateRegions = (regions: Region[]) => {
-        if (!wsRegions || regionsUpdated) return;
-        // // console.log('updateRegions', regions);
-
-        setRegionsUpdated(true);
+        // This function is now just a placeholder to prevent errors
+        // We will handle region updates in our main useEffect
+        console.log("updateRegions called, but using main region management instead");
     };
 
     const formatTime = (seconds: number) => {
@@ -178,6 +206,7 @@ export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, re
         return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
     };
 
+    // Initialize the waveform
     useEffect(() => {
         if (!waveformRef.current) return;
 
@@ -200,31 +229,26 @@ export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, re
                 color: waveOptions.waveColor || '#ccc',
             },
         }));
-
+        // Only create spectrogram plugin once when showSpectrogram is true
+        // This prevents memory leaks from creating multiple instances
+        if (showSpectrogram) {
+            // Check if we already have a spectrogram plugin instance
+            if (!wsSpectrogram) {
+                const spectrogramPlugin = ws.registerPlugin(SpectrogramPlugin.create({
+                    labels: true,
+                    height: 200,
+                    splitChannels: false,
+                    frequencyMax: 8000,
+                    frequencyMin: 0,
+                    labelsColor: "transparent",
+                    fftSamples: 512,
+                    scale: "mel"
+                }));
+                setWsSpectrogram(spectrogramPlugin);
+            }
+        }
         setWaveform(ws);
         setWsRegions(regionsPlugin);
-
-        // Track mouse movement over the waveform
-        const handleMouseMove = (e: MouseEvent) => {
-            if (!wsRegions) return;
-
-            // Get the mouse position relative to the waveform
-            const rect = ws.getWrapper().getBoundingClientRect();
-            const x = e.clientX - rect.left;
-
-            // Find the region under the cursor - only check x coordinate (horizontal position)
-            const regions = wsRegions.getRegions();
-            const regionUnderCursor = regions.find(region => {
-                const regionStartPx = region.start / ws.getDuration() * rect.width;
-                const regionEndPx = region.end / ws.getDuration() * rect.width;
-                return x >= regionStartPx && x <= regionEndPx;
-            });
-
-            setRegionUnderCursor(regionUnderCursor || null);
-        };
-
-        ws.getWrapper().addEventListener('mousemove', handleMouseMove);
-
 
         // Add keyboard event listener for space bar, arrow keys, and region markers
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -383,6 +407,12 @@ export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, re
 
                 }
             }
+            else if (e.key.toLowerCase() === 'w') {
+                e.preventDefault();
+                ws.seekTo(0 / ws.getDuration());
+            }
+
+
         };
 
         window.addEventListener('keydown', handleKeyDown);
@@ -407,43 +437,104 @@ export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, re
         });
 
         ws.load(audioSrc);
-        onReady();
+
+        // on mouse wheel, zoom in or out
+        ws.getWrapper().addEventListener('wheel', (e) => {
+            e.preventDefault();
+            ws.zoom(e.deltaY > 0 ? zoomMinPxPerS * 1.1 : zoomMinPxPerS * 0.9);
+        });
 
         ws.on("ready", () => {
             ws.zoom(zoomMinPxPerS);
             setDuration(ws.getDuration());
-
-            // // Load regions once when waveform is ready
-            regions.forEach(region => {
-                if (!region.start || !region.end) return;
-                regionsPlugin.addRegion({
-                    start: region.start,
-                    end: region.end,
-                    content: region.content,
-                    id: buildRegionId(region),
-                    color: `rgba(${Math.random() * 255}, ${Math.random() * 255}, ${Math.random() * 255}, 0.5)`,
-                    drag: region.drag,
-                    resize: region.resize,
-                });
-            });
+            setWaveformReady(true); // Mark the waveform as ready
+            onReady();
         });
 
         ws.on('audioprocess', () => {
             setCurrentTime(ws.getCurrentTime());
         });
 
+
+
         return () => {
             window.removeEventListener('keydown', handleKeyDown);
-            ws.getWrapper().removeEventListener('mousemove', handleMouseMove);
             ws.destroy();
+
+
+            // Ensure all regions are cleared when component unmounts
+            if (wsRegions) {
+                try {
+                    wsRegions.clearRegions();
+                } catch (e) {
+                    console.error('Error clearing regions on unmount:', e);
+                }
+            }
         };
     }, [audioSrc]);
 
+    // Add regions after both waveform and colors are ready
     useEffect(() => {
-        if (regions.length > 0 && wsRegions) {
-            updateRegions(regions);
+        if (!waveformReady || !wsRegions || colors.length === 0) {
+            return;
         }
-    }, [regions]);
+
+        // Skip if no regions to add
+        if (regions.length === 0) {
+            // Clear regions if array is empty
+            wsRegions.clearRegions();
+            return;
+        }
+
+        console.log('Adding regions with colors:', colors);
+
+        // To avoid memory leaks and duplicate regions, use a more careful approach
+        // Get existing region IDs
+        const existingRegionIds = wsRegions.getRegions().map(r => r.id);
+        console.log('Existing region IDs:', existingRegionIds);
+
+        // Clear all regions to prevent duplicates and memory leaks
+        wsRegions.clearRegions();
+
+        // Track the regions we're adding for debugging
+        const addedRegions: string[] = [];
+        // filter duoplicate regions
+        const uniqueRegions = regions.filter((region, index, self) =>
+            index === self.findIndex((t) => (
+                t.id === buildRegionId(region) ||
+                (t.start === region.start && t.end === region.end && t.content === region.content)
+            ))
+        );
+        // Add regions with colors
+        uniqueRegions.forEach((region, index) => {
+            if (!region.start || !region.end) return;
+
+            // Make sure color index is within bounds
+            const colorIndex = index % colors.length;
+            const regionId = buildRegionId(region);
+            console.log(`Adding region ${index} with ID ${regionId} and color:`, colors[colorIndex]);
+
+            try {
+
+                const newRegion = wsRegions.addRegion({
+                    start: region.start,
+                    end: region.end,
+                    content: region.content,
+                    id: regionId,
+                    color: colors[colorIndex] || `rgba(100, 100, 100, 0.5)`,
+                    drag: region.drag,
+                    resize: region.resize,
+                });
+                addedRegions.push(newRegion.id);
+            } catch (e) {
+                console.error('Error adding region:', e);
+            }
+        });
+
+        console.log(`Added ${addedRegions.length} regions with IDs:`, addedRegions);
+
+
+    }, [regions, colors]);
 
     return (
         <div style={{
@@ -455,7 +546,6 @@ export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, re
             boxSizing: 'border-box'
         }}>
             <div ref={waveformRef}
-
                 id="waveform"
                 style={{
                     width: "100%",
@@ -551,11 +641,12 @@ export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, re
                             borderRadius: '4px',
                             cursor: 'pointer',
                             padding: '5px 10px',
-                            display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             color: 'white',
-                            marginLeft: '10px'
+                            marginLeft: '10px',
+                            // Hide save button when no regions
+                            display: regions.length > 0 ? 'flex' : 'none'
                         }}
                     >
                         <Save size={16} style={{ marginRight: '5px' }} />
@@ -567,7 +658,6 @@ export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, re
                     display: 'flex',
                     alignItems: 'center',
                     gap: '10px',
-
                     color: 'white'
                 }}>
                     <span>{formatTime(currentTime)}</span>
@@ -598,28 +688,49 @@ export const WavesurferViewer: React.FC<WavesurferViewerProps> = ({ audioSrc, re
                         }}
                     />
                 </div>
-                {/* keyboard hints */}
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    flexDirection: 'row',
-                    flexWrap: 'wrap',
-                    gap: '10px',
 
-                    color: 'white',
-                    maxWidth: '600px'
-                }}>
-                    <span><b>i</b>: set region start</span>
-                    <span><b>o</b>: set region end</span>
-                    <span><b>s</b>: play region start</span>
-                    <span><b>e</b>: play region end</span>
-                    <span><b>space</b>: play/pause</span>
-                    <span><b>↑</b>: prev region</span>
-                    <span><b>↓</b>: next region</span>
-                    <span><b>←</b>: seek -0.1s</span>
-                    <span><b>→</b>: seek +0.1s</span>
-                    <span><b>l</b>: loop region</span>
-                </div>
+                {/* keyboard hints - only show if regions exist */}
+                {regions.length > 0 && (
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        flexDirection: 'row',
+                        flexWrap: 'wrap',
+                        gap: '10px',
+                        color: 'white',
+                        maxWidth: '600px'
+                    }}>
+                        <span><b>i</b>: set region start</span>
+                        <span><b>o</b>: set region end</span>
+                        <span><b>s</b>: play region start</span>
+                        <span><b>e</b>: play region end</span>
+                        <span><b>space</b>: play/pause</span>
+                        <span><b>↑</b>: prev region</span>
+                        <span><b>↓</b>: next region</span>
+                        <span><b>←</b>: seek -0.1s</span>
+                        <span><b>→</b>: seek +0.1s</span>
+                        <span><b>l</b>: loop region</span>
+                        <span><b>w</b>: skip to start</span>
+
+                    </div>
+                )}
+
+                {/* Only show basic keyboard shortcuts if no regions */}
+                {regions.length === 0 && (
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        flexDirection: 'row',
+                        flexWrap: 'wrap',
+                        gap: '10px',
+                        color: 'white',
+                        maxWidth: '300px'
+                    }}>
+                        <span><b>space</b>: play/pause</span>
+                        <span><b>←</b>: seek -0.1s</span>
+                        <span><b>→</b>: seek +0.1s</span>
+                    </div>
+                )}
             </div>
         </div>
     );

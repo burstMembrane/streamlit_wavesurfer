@@ -36,6 +36,8 @@ interface WavesurferComponentProps {
         }>;
         audio_src: string;
         wave_options: WaveSurferUserOptions;
+        region_colormap: string;
+        show_spectrogram: boolean;
 
     };
 }
@@ -50,7 +52,7 @@ const WavesurferComponent = ({ args }: WavesurferComponentProps) => {
     const waveOptions = args.wave_options;
 
     const regions = args.regions ?
-        args.regions.map((e) => new Region(e.start, e.end, e.content, e.color, e.drag, e.resize)) :
+        args.regions.map((e) => new Region(e.id, e.start, e.end, e.content, e.color, e.drag, e.resize)) :
         [];
     const audioSrc = args.audio_src;
     console.log(`audioSrc: ${audioSrc}`);
@@ -58,9 +60,7 @@ const WavesurferComponent = ({ args }: WavesurferComponentProps) => {
     // Report updated regions back to Streamlit when they change
     useEffect(() => {
         if (updatedRegions.length > 0) {
-            console.log("Sending updated regions to Streamlit:", updatedRegions);
-            // only save the id, text, start, end
-            // filter any regions that don't have a start or end
+
             const filteredRegions = updatedRegions.filter((region) => region.start > 0 && region.end > 0);
             Streamlit.setComponentValue({
                 ready: ready,
@@ -93,6 +93,8 @@ const WavesurferComponent = ({ args }: WavesurferComponentProps) => {
                 console.log("Regions changed:", regions);
                 setUpdatedRegions(regions);
             }}
+            regionColormap={args.region_colormap}
+            showSpectrogram={args.show_spectrogram}
         />
     );
 
