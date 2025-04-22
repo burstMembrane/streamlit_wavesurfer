@@ -1,4 +1,5 @@
 import RegionsPlugin from "wavesurfer.js/dist/plugins/regions";
+import type WaveSurfer from "wavesurfer.js";
 import { useRef, useEffect } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 
@@ -11,9 +12,6 @@ export const useWaveSurferHotkeys = (
     setActiveRegion: (region: any) => void,
     setLoopRegion: (state: boolean | ((prev: boolean) => boolean)) => void
 ) => {
-
-
-
     const waveformRef = useRef(waveform);
     const regionsRef = useRef(wsRegions);
     const readyRef = useRef(waveformReady);

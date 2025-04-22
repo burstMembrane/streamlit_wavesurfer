@@ -5,6 +5,22 @@ import TimelinePlugin from "wavesurfer.js/dist/plugins/timeline";
 import WaveSurfer from "wavesurfer.js";
 import { WaveSurferUserOptions } from "../types";
 
+// Use a module-level variable to track instance creation and prevent duplicates during hot reload
+let wavesurferInstance: WaveSurfer | null = null;
+let instanceCleanup: (() => void) | null = null;
+
+// Handle cleanup for hot reloading if supported
+// @ts-ignore - Ignoring TypeScript errors for HMR which may not be typed in all environments
+if (typeof module !== 'undefined' && module.hot) {
+    // @ts-ignore
+    module.hot.dispose(() => {
+        if (instanceCleanup) {
+            instanceCleanup();
+            instanceCleanup = null;
+        }
+    });
+}
+
 export const useWaveSurfer = ({
     containerRef,
     audioSrc,
@@ -33,13 +49,6 @@ export const useWaveSurfer = ({
     const showSpectrogramRef = useRef(showSpectrogram);
     const onReadyCallbackRef = useRef(onReadyCallback);
 
-    // Update refs when props change
-    useEffect(() => {
-        optionsRef.current = waveOptions;
-        audioSrcRef.current = audioSrc;
-        showSpectrogramRef.current = showSpectrogram;
-        onReadyCallbackRef.current = onReadyCallback;
-    }, [waveOptions, audioSrc, showSpectrogram, onReadyCallback]);
 
     // Memoize wavesurfer options to prevent unnecessary re-renders
     const getWavesurferOptions = useCallback(() => ({
@@ -52,35 +61,69 @@ export const useWaveSurfer = ({
 
     // Initialize WaveSurfer instance - with MINIMAL dependencies
     useEffect(() => {
-        console.log("[useWaveSurfer] Initializing WaveSurfer");
+        // Skip if component ref isn't ready yet 
         if (!containerRef.current) {
-            console.log("[useWaveSurfer] No container ref, skipping initialization");
             return;
         }
 
-        // Skip if we already have a waveform instance
-        if (waveform) {
-            console.log("[useWaveSurfer] Waveform already exists, loading new audio source:", audioSrcRef.current);
+        // Check if we already have a global instance
+        if (wavesurferInstance) {
+            setWaveform(wavesurferInstance);
+
+            // Connect to existing instance
             try {
-                // Just load the new audio source rather than recreating everything
-                waveform.load(audioSrcRef.current);
+                // Load audio into existing instance
+                wavesurferInstance.load(audioSrc);
                 return;
             } catch (error) {
-                console.error("[useWaveSurfer] Error loading new audio:", error);
-                // If loading fails, we'll create a new instance below
+                console.error("[useWaveSurfer] Error using existing instance:", error);
+                // Continue with new instance creation
             }
         }
 
-        console.log("[useWaveSurfer] Creating new WaveSurfer instance");
         let ws: WaveSurfer;
         let regionsPlugin: RegionsPlugin;
+        let cleanup: () => void = () => { };
 
         try {
             // Create WaveSurfer instance
             const options = getWavesurferOptions();
-            // Avoid stringifying the entire options object which may contain cyclic references
-            console.log("[useWaveSurfer] Creating with options - container:", options.container ? "defined" : "undefined", "responsive:", options.responsive);
+
+            // Create wavesurfer with standard options
             ws = WaveSurfer.create(options);
+
+            // Store in global variable
+            wavesurferInstance = ws;
+
+            // Add handlers to resume AudioContext on user interaction
+            let audioContextResumed = false;
+            const resumeAudioContext = () => {
+                if (!audioContextResumed && ws) {
+                    try {
+                        const audioContext = (ws as any).backend?.ac || null;
+                        if (audioContext && audioContext.state !== 'running') {
+                            audioContext.resume();
+                            audioContextResumed = true;
+                        }
+                    } catch (error) {
+                        console.error("[useWaveSurfer] Error resuming AudioContext:", error);
+                    }
+                }
+            };
+
+            // Listen for user interaction events
+            if (containerRef.current) {
+                containerRef.current.addEventListener('click', resumeAudioContext);
+            }
+            document.addEventListener('click', resumeAudioContext);
+
+            // Clean up listener function
+            cleanup = () => {
+                if (containerRef.current) {
+                    containerRef.current.removeEventListener('click', resumeAudioContext);
+                }
+                document.removeEventListener('click', resumeAudioContext);
+            };
 
             // Register plugins
             regionsPlugin = ws.registerPlugin(RegionsPlugin.create());
@@ -115,7 +158,6 @@ export const useWaveSurfer = ({
 
             // Set up event handlers
             ws.on("ready", () => {
-                console.log("[useWaveSurfer] Waveform ready");
                 try {
                     ws.zoom(zoomLevel);
                     setDuration(ws.getDuration());
@@ -139,95 +181,85 @@ export const useWaveSurfer = ({
             ws.on('pause', () => setIsPlaying(false));
 
             // Load the audio
-            console.log("[useWaveSurfer] Loading audio source:", audioSrcRef.current);
             ws.load(audioSrcRef.current);
 
-            // Clean up function
-            return () => {
-                console.log("[useWaveSurfer] Cleaning up WaveSurfer instance");
-                try {
+            // Create the cleanup function
+            const finalCleanup = () => {
+                if (cleanup) {
+                    cleanup();
+                }
 
-                    // Remove all event listeners - check if unAll exists first
-                    if (typeof ws.unAll === 'function') {
-                        ws.unAll();
-                    } else {
-                        console.log("[useWaveSurfer] unAll method not available, skipping event listener cleanup");
+                if (ws) {
+                    try {
+                        // Remove all event listeners
+                        if (typeof ws.unAll === 'function') {
+                            ws.unAll();
+                        }
+
+                        // Pause playback
+                        if (ws.isPlaying()) {
+                            ws.pause();
+                        }
+
+                        // Don't immediately destroy - can cause "operation aborted" errors during hot reloading
+                        // Instead, wrap in a timeout to ensure any pending operations complete
+                        const wsToDestroy = ws; // Create a reference for the timeout closure
+
+                        // Clear state immediately to prevent React errors
+                        setWaveform(null);
+                        setWsRegions(null);
+                        setWsSpectrogram(null);
+                        setWaveformReady(false);
+
+                        // Clear global instance reference
+                        if (wavesurferInstance === ws) {
+                            wavesurferInstance = null;
+                        }
+
+                        // Delay destroy to avoid race conditions with audio loading
+                        setTimeout(() => {
+                            try {
+                                // Check if destroy method exists before calling it
+                                if (wsToDestroy && typeof wsToDestroy.destroy === 'function') {
+                                    wsToDestroy.destroy();
+                                }
+                            } catch (error) {
+                                console.error("[useWaveSurfer] Error during delayed destroy:", error);
+                            }
+                        }, 100); // Small delay to give in-progress operations time to complete
+
+                    } catch (error) {
+                        console.error("[useWaveSurfer] Error during cleanup:", error);
                     }
-
-                    // Try to pause playback
-                    if (ws.isPlaying()) {
-                        ws.pause();
-                    }
-
-                    // Don't destroy the waveform on cleanup as it can cause "operation aborted" errors
-                    // ws.destroy();
-                } catch (error) {
-                    console.error("[useWaveSurfer] Error during cleanup:", error);
                 }
             };
+
+            // Store cleanup in global variable for HMR
+            instanceCleanup = finalCleanup;
+
+            // Return the cleanup function to React
+            return finalCleanup;
+
         } catch (error) {
             console.error("[useWaveSurfer] Error setting up wavesurfer:", error);
             return () => { };
         }
-        // Use containerRef as the only dependency to avoid recreating WaveSurfer unnecessarily
-    }, [containerRef, getWavesurferOptions]);
+    }, []); // Empty dependency array - only run on mount
 
     // Handle audio source changes separately
     useEffect(() => {
-        if (!waveform) return;
-        console.log("[useWaveSurfer] Audio source changed, loading:", audioSrc);
-        try {
-            waveform.load(audioSrc);
-        } catch (error) {
-            console.error("[useWaveSurfer] Error loading audio:", error);
+        if (!waveform || !audioSrc) return;
+
+        if (audioSrcRef.current !== audioSrc) {
+            console.log("[useWaveSurfer] Audio source changed, loading:", audioSrc);
+            audioSrcRef.current = audioSrc;
+            try {
+                waveform.load(audioSrc);
+            } catch (error) {
+                console.error("[useWaveSurfer] Error loading audio:", error);
+            }
         }
     }, [audioSrc, waveform]);
-
-    // Function to manually set zoom level
-    const setZoom = useCallback((level: number) => {
-        setZoomLevel(level);
-        if (waveform) {
-            try {
-                waveform.zoom(level);
-            } catch (error) {
-                console.error("[useWaveSurfer] Error setting zoom:", error);
-            }
-        }
-    }, [waveform]);
-
-    // Add a cleanup function for the waveform when component unmounts
-    useEffect(() => {
-        // This effect runs once on mount and once on unmount
-        return () => {
-            console.log("[useWaveSurfer] Component unmounting, cleaning up WaveSurfer instance");
-            if (waveform) {
-                try {
-                    // Remove all event listeners - check if unAll exists first
-                    if (typeof waveform.unAll === 'function') {
-                        waveform.unAll();
-                    } else {
-                        console.log("[useWaveSurfer] unAll method not available, skipping event listener cleanup");
-                    }
-
-                    // Try to pause playback
-                    if (waveform.isPlaying()) {
-                        waveform.pause();
-                    }
-
-                    // Don't destroy to avoid "operation aborted" errors
-                    // waveform.destroy();
-
-                    // Set state to null
-                    setWaveform(null);
-                    setWsRegions(null);
-                    setWsSpectrogram(null);
-                    setWaveformReady(false);
-                } catch (error) {
-                    console.error("[useWaveSurfer] Error during cleanup:", error);
-                }
-            }
-        };
-    }, []);
 
     return {
         waveform,
@@ -238,51 +270,14 @@ export const useWaveSurfer = ({
         duration,
         isPlaying,
         zoomLevel,
-        setZoom,
-        play: useCallback(() => {
-            if (waveform) {
-                try {
-                    waveform.play();
-                } catch (error) {
-                    console.error("[useWaveSurfer] Error playing:", error);
-                }
-            }
+        setZoom: useCallback((level: number) => {
+            setZoomLevel(level);
+            waveform && waveform?.zoom(level);
         }, [waveform]),
-        pause: useCallback(() => {
-            if (waveform) {
-                try {
-                    waveform.pause();
-                } catch (error) {
-                    console.error("[useWaveSurfer] Error pausing:", error);
-                }
-            }
-        }, [waveform]),
-        skipForward: useCallback(() => {
-            if (waveform) {
-                try {
-                    waveform.skip(5);
-                } catch (error) {
-                    console.error("[useWaveSurfer] Error skipping forward:", error);
-                }
-            }
-        }, [waveform]),
-        skipBackward: useCallback(() => {
-            if (waveform) {
-                try {
-                    waveform.skip(-5);
-                } catch (error) {
-                    console.error("[useWaveSurfer] Error skipping backward:", error);
-                }
-            }
-        }, [waveform]),
-        seekTo: useCallback((position: number) => {
-            if (waveform) {
-                try {
-                    waveform.seekTo(position);
-                } catch (error) {
-                    console.error("[useWaveSurfer] Error seeking:", error);
-                }
-            }
-        }, [waveform]),
+        play: useCallback(() => waveform && waveform?.play(), [waveform]),
+        pause: useCallback(() => waveform && waveform?.pause(), [waveform]),
+        skipForward: useCallback(() => waveform && waveform?.skip(5), [waveform]),
+        skipBackward: useCallback(() => waveform && waveform?.skip(-5), [waveform]),
+        seekTo: useCallback((position: number) => waveform && waveform?.seekTo(position), [waveform]),
     };
 };
