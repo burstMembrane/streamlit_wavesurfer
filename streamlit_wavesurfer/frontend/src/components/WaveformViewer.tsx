@@ -24,7 +24,6 @@ export class Region {
     }
 }
 
-// Custom history management types removed
 
 export interface WavesurferViewerProps {
     audioSrc: string;

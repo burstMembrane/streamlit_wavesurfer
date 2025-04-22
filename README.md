@@ -9,6 +9,8 @@
   - [ ] Allow skip to time? then we can just pass through the region start from python (or both)
 - [x] Keyboard shortcuts for nudge etc
 - [ ] Load audio from numpy arrays
+- [ ] Region validation from python?
+- [ ] Spectrogram view (is this another component?)
 
 ## Bug Fixes
 
