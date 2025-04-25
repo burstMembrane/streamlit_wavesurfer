@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useMemo, memo } from 'react';
+import React, { useEffect, useRef, useState, memo } from 'react';
 import { Play, Pause, SkipBack, SkipForward, Save, Keyboard } from 'lucide-react';
 import { WavesurferViewerProps } from "./types"
 import { useRegions, useWaveSurfer, useWaveSurferHotkeys, useTimeFormatter, useRegionColors } from './hooks';

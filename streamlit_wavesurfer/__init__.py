@@ -1,11 +1,9 @@
 __all__ = ["wavesurfer", "Region", "RegionColormap", "WaveSurferOptions"]
 
-import difflib
 import urllib.parse
 from dataclasses import dataclass
 from pathlib import Path
-from pprint import pprint
-from typing import List, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 import streamlit as st
 import streamlit.components.v1 as components
@@ -42,10 +40,35 @@ colormaps = [
     "electric",
 ]
 
+Colormap = Literal[
+    "jet",
+    "hsv",
+    "hot",
+    "cool",
+    "spring",
+    "summer",
+    "autumn",
+    "winter",
+    "bone",
+    "copper",
+    "greys",
+    "YIGnBu",
+    "greens",
+    "YIOrRd",
+    "bluered",
+    "RdBu",
+    "picnic",
+    "rainbow",
+    "portland",
+    "blackbody",
+    "earth",
+    "electric",
+]
+
 
 @dataclass
 class RegionColormap:
-    name: str
+    name: Colormap
 
     def __str__(self):
         return self.name
@@ -70,7 +93,7 @@ class Region:
     drag: bool = False
     resize: bool = False
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         return {
             "start": self.start,
             "end": self.end,
@@ -119,26 +142,8 @@ class WaveSurferOptions:
     normalize: bool = True
     hideScrollbar: bool = True
 
-    def to_dict(self):
-        return {
-            "waveColor": self.waveColor,
-            "progressColor": self.progressColor,
-            "cursorWidth": self.cursorWidth,
-            "minPxPerSec": self.minPxPerSec,
-            "fillParent": self.fillParent,
-            "interact": self.interact,
-            "dragToSeek": self.dragToSeek,
-            "autoScroll": self.autoScroll,
-            "autoCenter": self.autoCenter,
-            "sampleRate": self.sampleRate,
-            "height": self.height,
-            "width": self.width,
-            "barWidth": self.barWidth,
-            "barGap": self.barGap,
-            "barRadius": self.barRadius,
-            "normalize": self.normalize,
-            "hideScrollbar": self.hideScrollbar,
-        }
+    def to_dict(self) -> Dict[str, Any]:
+        return self.__dict__
 
 
 if not _RELEASE:
@@ -210,7 +215,7 @@ def wavesurfer(
     regions: Optional[RegionList] | List[Region] | List[dict] = None,
     key: Optional[str] = None,
     wave_options: WaveSurferOptions = None,
-    region_colormap: Optional[str] = None,
+    region_colormap: Optional[Colormap] = None,
     show_spectrogram: bool = False,
 ) -> bool:
     """Nice audio/video player with audio track selection support.
