@@ -1,1 +1,8 @@
 build/
+*/build/
+*/node_modules/
+*/dist/
+*/dist/*
+*/dist/*/*
+*/dist/*/*/*
+*/dist/*/*/*/*
