@@ -12,6 +12,7 @@ export const useRegions = (
     loopRegion: boolean,
     onRegionsChange?: (regions: Region[]) => void
 ) => {
+    console.log(loopRegion)
     const [activeRegion, setActiveRegion] = useState<any>(null);
     const activeRegionRef = useRef<any>(null);
     const [regionOriginalColors, setRegionOriginalColors] = useState<Record<string, string>>({});

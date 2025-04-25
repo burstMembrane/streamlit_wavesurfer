@@ -1,5 +1,5 @@
 export const objectHash = (obj: any) => {
-    return JSON.stringify(obj, (key, value) =>
+    return JSON.stringify(obj, (_, value) =>
         typeof value === 'object' && value !== null ? undefined : value
     );
 };
