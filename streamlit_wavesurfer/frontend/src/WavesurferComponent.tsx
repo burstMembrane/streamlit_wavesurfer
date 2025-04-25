@@ -2,7 +2,7 @@ import {
     Streamlit,
     withStreamlitConnection,
 } from "streamlit-component-lib"
-import React, { useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { WavesurferViewer } from "./components/waveformviewer/WaveformViewer"
 import { Region } from "./components/waveformviewer/types"
 import { WaveSurferUserOptions } from "./components/waveformviewer/types"
