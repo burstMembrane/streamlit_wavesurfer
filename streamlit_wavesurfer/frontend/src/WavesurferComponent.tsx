@@ -75,7 +75,10 @@ const WavesurferComponent = ({ args }: WavesurferComponentProps) => {
 
     return (
         // @ts-ignore
-        <center>{wavesurfer}</center>
+        <div>
+
+            <center>{wavesurfer}</center>
+        </div>
     );
 };
 
