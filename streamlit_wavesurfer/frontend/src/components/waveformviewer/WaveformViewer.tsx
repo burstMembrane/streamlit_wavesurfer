@@ -29,50 +29,20 @@ const KeyboardShortcuts = ({ showAll = false }) => {
     const shortcuts = showAll ? allShortcuts : basicShortcuts;
 
     return (
-        <div style={{ position: 'relative' }}>
+        <div className="relative">
             <button
                 onClick={() => setShowShortcuts(!showShortcuts)}
-                style={{
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    padding: '5px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'white'
-                }}
+                className="bg-transparent border-none cursor-pointer p-2 flex items-center justify-center text-white"
             >
                 <Keyboard size={20} />
             </button>
 
             {showShortcuts && (
-                <div style={{
-                    position: 'absolute',
-                    top: '100%',
-                    right: 0,
-                    backgroundColor: '#333',
-                    padding: '10px',
-                    borderRadius: '5px',
-                    boxShadow: '0 2px 10px rgba(0, 0, 0, 0.2)',
-                    zIndex: 1000,
-                    width: '300px',
-                }}>
-                    <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'auto 1fr',
-                        gap: '8px 12px',
-                        color: 'white',
-                    }}>
+                <div className="absolute top-0 right-0 bg-gray-800 p-2 rounded-md shadow-md z-1000 w-64">
+                    <div className="grid grid-cols-[auto_1fr] gap-2">
                         {shortcuts.map((shortcut) => (
                             <React.Fragment key={shortcut.key}>
-                                <div style={{
-                                    fontWeight: 'bold',
-                                    padding: '2px 6px',
-                                    backgroundColor: '#555',
-                                    borderRadius: '3px',
-                                    textAlign: 'center'
-                                }}>
+                                <div className="font-bold px-2 py-1 bg-gray-700 rounded-md text-center">
                                     {shortcut.key}
                                 </div>
                                 <div>{shortcut.description}</div>
@@ -81,11 +51,56 @@ const KeyboardShortcuts = ({ showAll = false }) => {
                     </div>
                 </div>
             )}
-        </div>
+        </div >
     );
 };
 
-// Main component - update to pass loopRegion to hooks
+interface AudioControlsProps {
+    skipBackward: () => void;
+    isPlaying: boolean;
+    pause: () => void;
+    play: () => void;
+    skipForward: () => void;
+    currentTime: number;
+    duration: number;
+}
+
+const AudioControls = ({ skipBackward, isPlaying, pause, play, skipForward, currentTime, duration }: AudioControlsProps) => {
+    const formatTime = useTimeFormatter();
+    return (
+        <div className="flex justify-center items-center gap-2">
+            <div className="flex items-center gap-2">
+                <button
+                    onClick={skipBackward}
+                    className="bg-transparent border-none cursor-pointer p-2 flex items-center justify-center text-white"
+                >
+                    <SkipBack size={20} />
+                </button>
+
+                <button
+                    onClick={isPlaying ? pause : play}
+                    className="bg-transparent border-none cursor-pointer p-2 flex items-center justify-center text-white"
+                >
+                    {!isPlaying ? <Play size={24} /> : <Pause size={24} />}
+                </button>
+
+                <button
+                    onClick={skipForward}
+                    className="bg-transparent border-none cursor-pointer p-2 flex items-center justify-center text-white"
+                >
+                    <SkipForward size={20} />
+                </button>
+
+                <div className="flex items-center gap-4 text-white">
+                    <span>{formatTime(currentTime)}</span>
+                    <span>/</span>
+                    <span>{formatTime(duration)}</span>
+                </div>
+            </div>
+
+        </div>
+    )
+}
 const WaveformViewerComponent: React.FC<WavesurferViewerProps> = ({
     audioSrc,
     regions = [],
@@ -95,31 +110,11 @@ const WaveformViewerComponent: React.FC<WavesurferViewerProps> = ({
     regionColormap,
     showSpectrogram
 }) => {
-    // Use useRef with null initialization to ensure stable reference
     const waveformRef = useRef<HTMLDivElement>(null);
     const [loopRegion, setLoopRegion] = useState(false);
-
-    // Track first render for debug purposes - only log in development
-    const isFirstRender = useRef(true);
-    const audioSrcRef = useRef(audioSrc);
-
-    useEffect(() => {
-        if (isFirstRender.current) {
-            console.log("[WavesurferViewer] First render with audioSrc:", audioSrc);
-            isFirstRender.current = false;
-        } else if (audioSrcRef.current !== audioSrc) {
-            console.log("[WavesurferViewer] Audio source changed to:", audioSrc);
-            audioSrcRef.current = audioSrc;
-        }
-    }, [audioSrc]);
-
-    // Get color scheme for regions
     const colors = useRegionColors(regions, regionColormap);
 
-    // Format time display
-    const formatTime = useTimeFormatter();
 
-    // Initialize wavesurfer and get controls
     const {
         waveform,
         wsRegions: wavesurferRegions,
@@ -172,143 +167,48 @@ const WaveformViewerComponent: React.FC<WavesurferViewerProps> = ({
     }, [zoomLevel, waveform, waveformReady]);
 
     return (
-        <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '10px',
-            padding: '20px',
-            width: '100%',
-            boxSizing: 'border-box'
-        }}>
+        <div className="flex flex-col gap-4 p-4 w-full box-border">
             <div ref={waveformRef}
                 id="waveform"
-                style={{
-                    width: "100%",
-                    minHeight: '200px',
-                    marginBottom: '20px'
-                }} />
-
-            <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '15px',
-                borderRadius: '10px',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                width: '100%',
-                boxSizing: 'border-box'
-            }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <button
-                        onClick={skipBackward}
-                        style={{
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            padding: '5px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: 'white'
-                        }}
-                    >
-                        <SkipBack size={20} />
-                    </button>
-
-                    <button
-                        onClick={isPlaying ? pause : play}
-                        style={{
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            padding: '5px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: 'white'
-                        }}
-                    >
-                        {!isPlaying ? <Play size={24} /> : <Pause size={24} />}
-                    </button>
-
-                    <button
-                        onClick={skipForward}
-                        style={{
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            padding: '5px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: 'white'
-                        }}
-                    >
-                        <SkipForward size={20} />
-                    </button>
-
+                className="w-full min-h-[200px] mb-4" />
+            <div className="flex justify-between items-center gap-2">
+                <AudioControls
+                    skipBackward={skipBackward}
+                    isPlaying={isPlaying}
+                    pause={pause}
+                    play={play}
+                    skipForward={skipForward}
+                    currentTime={currentTime}
+                    duration={duration}
+                />
+                <div className="flex  items-center gap-4">
                     <button
                         onClick={reportRegionsToParent}
-                        style={{
-                            background: '#1f1f1f',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            padding: '5px 10px',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: 'white',
-                            marginLeft: '10px',
-                            // Hide save button when no regions
-                            display: regions.length > 0 ? 'flex' : 'none'
-                        }}
+                        className="bg-gray-800 border-none border-radius-4px cursor-pointer p-2 flex items-center justify-center text-white"
                     >
-                        <Save size={16} style={{ marginRight: '5px' }} />
+                        <Save size={16} className="mr-2" />
                         Save Regions
                     </button>
+                    <div className="flex items-center gap-4 min-w-[200px]">
+                        <span>Zoom</span>
+                        <input
+                            type="range"
+                            min={1}
+                            max={350}
+                            value={zoomLevel}
+                            onChange={(e) => {
+                                const value = Number(e.target.value);
+                                setZoom(value);
+                            }}
+                            className="w-24 flex-1"
+                        />
+                        <KeyboardShortcuts showAll={regions.length > 0} />
+                    </div>
                 </div>
-
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    color: 'white'
-                }}>
-                    <span>{formatTime(currentTime)}</span>
-                    <span>/</span>
-                    <span>{formatTime(duration)}</span>
-                </div>
-
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    minWidth: '200px'
-                }}>
-                    <span>Zoom</span>
-                    <input
-                        type="range"
-                        min={1}
-                        max={350}
-                        value={zoomLevel}
-                        onChange={(e) => {
-                            const value = Number(e.target.value);
-                            setZoom(value);
-                        }}
-                        style={{
-                            width: '100px',
-                            flex: '1'
-                        }}
-                    />
-                </div>
-
-                {/* Keyboard shortcuts icon */}
-                <KeyboardShortcuts showAll={regions.length > 0} />
             </div>
         </div>
     );
 };
 
-// Export memoized version to prevent unnecessary re-renders
 export const WavesurferViewer = memo(WaveformViewerComponent);
 
