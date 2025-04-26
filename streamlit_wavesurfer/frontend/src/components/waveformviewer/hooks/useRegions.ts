@@ -3,10 +3,8 @@ import { Region } from "../types";
 import { buildRegionId, lightenColor } from '../utils';
 import { useEffect, useCallback, useRef, useState } from "react";
 
-
-
 export const useRegions = (
-    wsRegions: RegionsPlugin | null,
+    regionsPlugin: RegionsPlugin | null,
     regions: Region[],
     colors: string[],
     loopRegion: boolean,
@@ -29,7 +27,7 @@ export const useRegions = (
 
     // Highlight active region
     useEffect(() => {
-        if (activeRegion && wsRegions) {
+        if (activeRegion && regionsPlugin) {
             // Store original color if not already stored
             if (!regionOriginalColors[activeRegion.id]) {
                 setRegionOriginalColors(prev => ({
@@ -47,7 +45,7 @@ export const useRegions = (
             });
 
             // Reset colors of all other regions
-            wsRegions.getRegions().forEach(region => {
+            regionsPlugin.getRegions().forEach(region => {
                 if (region.id !== activeRegion.id && regionOriginalColors[region.id]) {
                     region.setOptions({
                         color: regionOriginalColors[region.id]
@@ -55,14 +53,14 @@ export const useRegions = (
                 }
             });
         }
-    }, [activeRegion, wsRegions, regionOriginalColors]);
+    }, [activeRegion, regionsPlugin, regionOriginalColors]);
 
     // Update regions in wavesurfer when props change
     useEffect(() => {
-        if (!wsRegions) return;
+        if (!regionsPlugin) return;
 
         // Clear existing regions
-        wsRegions.clearRegions();
+        regionsPlugin.clearRegions();
 
         // Add regions
         regions.forEach((region, index) => {
@@ -73,7 +71,7 @@ export const useRegions = (
             const regionId = region.id || buildRegionId(region);
 
             try {
-                wsRegions.addRegion({
+                regionsPlugin.addRegion({
                     start: region.start,
                     end: region.end,
                     content: region.content,
@@ -89,23 +87,23 @@ export const useRegions = (
 
         // Set up region event handlers
         const setupRegionEvents = () => {
-            wsRegions.on('region-in', (region) => {
+            regionsPlugin.on('region-in', (region) => {
                 setActiveRegion(region);
             });
 
-            wsRegions.on('region-clicked', (region) => {
+            regionsPlugin.on('region-clicked', (region) => {
                 setActiveRegion(region);
             });
         };
 
         setupRegionEvents();
-    }, [wsRegions, regions, colors]);
+    }, [regionsPlugin, regions, colors]);
 
     // Function to report regions back to parent
     const reportRegionsToParent = useCallback(() => {
-        if (!wsRegions || !onRegionsChange) return;
+        if (!regionsPlugin || !onRegionsChange) return;
 
-        const currentRegions = wsRegions.getRegions();
+        const currentRegions = regionsPlugin.getRegions();
         const regionsForParent = currentRegions.map(wsRegion => {
             let content = '';
             if (typeof wsRegion.content === 'string') {
@@ -126,7 +124,7 @@ export const useRegions = (
         });
 
         onRegionsChange(regionsForParent);
-    }, [wsRegions, onRegionsChange]);
+    }, [regionsPlugin, onRegionsChange]);
 
     // Function to update region boundaries
     const updateRegionBoundary = useCallback((targetRegion: any, options: any) => {

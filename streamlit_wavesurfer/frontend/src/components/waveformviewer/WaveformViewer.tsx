@@ -1,8 +1,8 @@
-import React, { useEffect, useRef, useState, memo } from 'react';
+import React, { useRef, useState, memo } from 'react';
 import { Play, Pause, SkipBack, SkipForward, Save, Keyboard } from 'lucide-react';
-import { WavesurferViewerProps } from "./types"
-import { useRegions, useWaveSurfer, useWaveSurferHotkeys, useTimeFormatter, useRegionColors } from './hooks';
-import './styles.css';
+import { WavesurferViewerProps } from "@waveformviewer/types";
+import { useRegions, useWaveSurfer, useWaveSurferHotkeys, useTimeFormatter, useRegionColors } from "@waveformviewer/hooks";
+import "@waveformviewer/styles.css";
 
 // KeyboardShortcuts component to display available shortcuts
 const KeyboardShortcuts = ({ showAll = false }) => {
@@ -117,54 +117,40 @@ const WaveformViewerComponent: React.FC<WavesurferViewerProps> = ({
 
     const {
         waveform,
-        wsRegions: wavesurferRegions,
-        waveformReady,
         currentTime,
         duration,
         isPlaying,
-        zoomLevel,
-        setZoom,
+        regionsPlugin,
         play,
         pause,
         skipForward,
-        skipBackward
+        skipBackward,
+        seekTo,
+        setZoom
     } = useWaveSurfer({
         containerRef: waveformRef,
         audioSrc,
         waveOptions,
         showSpectrogram,
-        onReadyCallback: onReady
+        onReady
     });
 
-    // Region management with loopRegion support
     const {
-        getTargetRegion,
         setActiveRegion,
+        getTargetRegion,
         reportRegionsToParent,
         updateRegionBoundary
-    } = useRegions(wavesurferRegions, regions, colors, loopRegion, onRegionsChange);
+    } = useRegions(regionsPlugin, regions, colors, loopRegion, onRegionsChange);
 
-    // Keyboard shortcuts
     useWaveSurferHotkeys(
         waveform,
-        wavesurferRegions,
-        waveformReady,
+        regionsPlugin,
         getTargetRegion,
         updateRegionBoundary,
         setActiveRegion,
         setLoopRegion
     );
 
-    // Handle zoom changes independently
-    useEffect(() => {
-        if (waveform && waveformReady) {
-            try {
-                waveform.zoom(zoomLevel);
-            } catch (error) {
-                console.error("Error applying zoom:", error);
-            }
-        }
-    }, [zoomLevel, waveform, waveformReady]);
 
     return (
         <div className="flex flex-col gap-4 p-4 w-full box-border">
@@ -195,7 +181,7 @@ const WaveformViewerComponent: React.FC<WavesurferViewerProps> = ({
                             type="range"
                             min={1}
                             max={350}
-                            value={zoomLevel}
+                            value={100}
                             onChange={(e) => {
                                 const value = Number(e.target.value);
                                 setZoom(value);

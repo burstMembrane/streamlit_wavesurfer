@@ -1,14 +1,17 @@
 import React from "react"
 import ReactDOM from "react-dom/client"
-import WavesurferComponent from "./WavesurferComponent"
-import "./index.css"
+import WavesurferComponent from "@/WavesurferComponent"
+import "@/index.css"
 
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 const rootElement = document.getElementById("root");
 if (!rootElement) throw new Error('Failed to find the root element');
-
+const queryClient = new QueryClient()
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <WavesurferComponent />
+    <QueryClientProvider client={queryClient}>
+      <WavesurferComponent />
+    </QueryClientProvider>
   </React.StrictMode>
 )
