@@ -22,7 +22,7 @@ export interface WavesurferComponentProps {
         wave_options: WaveSurferUserOptions;
         region_colormap: string;
         show_spectrogram: boolean;
-
+        show_minimap: boolean;
     };
 }
 
@@ -69,6 +69,7 @@ const WavesurferComponent = ({ args }: WavesurferComponentProps) => {
             onRegionsChange={onRegionsChange}
             regionColormap={args.region_colormap}
             showSpectrogram={args.show_spectrogram}
+            showMinimap={args.show_minimap}
         />
     );
 

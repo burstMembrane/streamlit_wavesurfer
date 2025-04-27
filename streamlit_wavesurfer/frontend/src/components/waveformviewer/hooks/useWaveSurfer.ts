@@ -6,7 +6,7 @@ import SpectrogramPlugin from "wavesurfer.js/dist/plugins/spectrogram";
 import TimelinePlugin from "wavesurfer.js/dist/plugins/timeline";
 import ZoomPlugin from "wavesurfer.js/dist/plugins/zoom";
 import { WaveSurferUserOptions } from "@waveformviewer/types";
-
+import MinimapPlugin from "wavesurfer.js/dist/plugins/minimap";
 async function fetchAudioData(audioSrc: string): Promise<Blob> {
     const response = await fetch(audioSrc);
     if (!response.ok) throw new Error(`Failed to fetch audio: ${response.statusText}`);
@@ -18,12 +18,14 @@ export const useWaveSurfer = ({
     audioSrc,
     waveOptions,
     showSpectrogram,
+    showMinimap,
     onReady,
 }: {
     containerRef: React.RefObject<HTMLDivElement>;
     audioSrc: string;
     waveOptions: WaveSurferUserOptions;
     showSpectrogram: boolean;
+    showMinimap: boolean;
     onReady: () => void;
 }) => {
     const waveformRef = useRef<WaveSurfer | null>(null);
@@ -65,6 +67,10 @@ export const useWaveSurfer = ({
                 fftSamples: 512,
                 scale: "mel",
             }));
+        }
+
+        if (showMinimap) {
+            ws.registerPlugin(MinimapPlugin.create({}));
         }
 
         ws.on("ready", () => {

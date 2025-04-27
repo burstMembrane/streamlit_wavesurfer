@@ -141,6 +141,7 @@ class WaveSurferOptions:
     barRadius: int = 2
     normalize: bool = True
     hideScrollbar: bool = True
+    showMinimap: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
         return self.__dict__
@@ -217,6 +218,7 @@ def wavesurfer(
     wave_options: WaveSurferOptions = None,
     region_colormap: Optional[Colormap] = None,
     show_spectrogram: bool = False,
+    show_minimap: bool = False,
 ) -> bool:
     """Nice audio/video player with audio track selection support.
 
@@ -245,6 +247,7 @@ def wavesurfer(
         wave_options=wave_options.to_dict(),
         region_colormap=region_colormap,
         show_spectrogram=show_spectrogram,
+        show_minimap=show_minimap,
     )
     return component_value
 
@@ -308,6 +311,7 @@ if not _RELEASE:
         ),
         region_colormap=colormap_selection,
         show_spectrogram=False,
+        show_minimap=True,
     )
 
     # Only update session_state.regions when state["ts"] is new

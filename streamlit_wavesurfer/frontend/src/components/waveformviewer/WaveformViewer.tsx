@@ -59,7 +59,8 @@ const WaveformViewerComponent: React.FC<WavesurferViewerProps> = ({
     waveOptions,
     onRegionsChange,
     regionColormap,
-    showSpectrogram
+    showSpectrogram,
+    showMinimap
 }) => {
     const waveformRef = useRef<HTMLDivElement>(null);
     const [loopRegions, setLoopRegions] = useState(false);
@@ -82,6 +83,7 @@ const WaveformViewerComponent: React.FC<WavesurferViewerProps> = ({
         audioSrc,
         waveOptions,
         showSpectrogram,
+        showMinimap,
         onReady
     });
 
