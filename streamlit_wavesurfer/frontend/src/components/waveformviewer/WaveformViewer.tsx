@@ -1,60 +1,11 @@
-import React, { useRef, useState, memo } from 'react';
-import { Play, Pause, SkipBack, SkipForward, Save, Keyboard } from 'lucide-react';
+import React, { useRef, useState, memo, useEffect } from 'react';
+import { Play, Pause, SkipBack, SkipForward, Save } from 'lucide-react';
 import { WavesurferViewerProps } from "@waveformviewer/types";
 import { useRegions, useWaveSurfer, useWaveSurferHotkeys, useTimeFormatter, useRegionColors } from "@waveformviewer/hooks";
+import RegionsPlugin from "wavesurfer.js/dist/plugins/regions.js";
+import { KeyboardShortcuts } from "@waveformviewer/KeyboardShortcuts";
+// can't use tailwind for the waveform view styles as it's got all sorts of specialized nested elements
 import "@waveformviewer/styles.css";
-
-// KeyboardShortcuts component to display available shortcuts
-const KeyboardShortcuts = ({ showAll = false }) => {
-    const [showShortcuts, setShowShortcuts] = useState(false);
-
-    const allShortcuts = [
-        { key: 'i', description: 'set region start' },
-        { key: 'o', description: 'set region end' },
-        { key: 's', description: 'play region start' },
-        { key: 'e', description: 'play region end' },
-        { key: 'space', description: 'play/pause' },
-        { key: '↑', description: 'prev region' },
-        { key: '↓', description: 'next region' },
-        { key: '←', description: 'seek -0.1s' },
-        { key: '→', description: 'seek +0.1s' },
-        { key: 'l', description: 'loop region' },
-        { key: 'w', description: 'skip to start' }
-    ];
-
-    const basicShortcuts = allShortcuts.filter(s =>
-        ['space', '←', '→'].includes(s.key)
-    );
-
-    const shortcuts = showAll ? allShortcuts : basicShortcuts;
-
-    return (
-        <div className="relative">
-            <button
-                onClick={() => setShowShortcuts(!showShortcuts)}
-                className="bg-transparent border-none cursor-pointer p-2 flex items-center justify-center text-white"
-            >
-                <Keyboard size={20} />
-            </button>
-
-            {showShortcuts && (
-                <div className="absolute top-0 right-0 bg-gray-800 p-2 rounded-md shadow-md z-1000 w-64">
-                    <div className="grid grid-cols-[auto_1fr] gap-2">
-                        {shortcuts.map((shortcut) => (
-                            <React.Fragment key={shortcut.key}>
-                                <div className="font-bold px-2 py-1 bg-gray-700 rounded-md text-center">
-                                    {shortcut.key}
-                                </div>
-                                <div>{shortcut.description}</div>
-                            </React.Fragment>
-                        ))}
-                    </div>
-                </div>
-            )}
-        </div >
-    );
-};
-
 interface AudioControlsProps {
     skipBackward: () => void;
     isPlaying: boolean;
@@ -111,36 +62,50 @@ const WaveformViewerComponent: React.FC<WavesurferViewerProps> = ({
     showSpectrogram
 }) => {
     const waveformRef = useRef<HTMLDivElement>(null);
-    const [loopRegion, setLoopRegion] = useState(false);
+    const [loopRegions, setLoopRegions] = useState(false);
     const colors = useRegionColors(regions, regionColormap);
-
+    const [regionsPlugin, setRegionsPlugin] = useState<RegionsPlugin | null>(null);
 
     const {
         waveform,
         currentTime,
         duration,
         isPlaying,
-        regionsPlugin,
         play,
         pause,
         skipForward,
         skipBackward,
-        seekTo,
-        setZoom
+        setZoom,
+        isLoading
     } = useWaveSurfer({
-        containerRef: waveformRef,
+        containerRef: waveformRef as React.RefObject<HTMLDivElement>,
         audioSrc,
         waveOptions,
         showSpectrogram,
         onReady
     });
 
+
+    // Get and store the RegionsPlugin instance from waveform
+    useEffect(() => {
+        if (waveform) {
+            // Wait until waveform is fully initialized
+            setTimeout(() => {
+                const plugins = waveform.getActivePlugins();
+                const regions = plugins.find(plugin => plugin instanceof RegionsPlugin) as RegionsPlugin | undefined;
+                setRegionsPlugin(regions || null);
+            }, 100);
+        } else {
+            setRegionsPlugin(null);
+        }
+    }, [waveform]);
+
     const {
-        setActiveRegion,
         getTargetRegion,
+        setActiveRegion,
         reportRegionsToParent,
-        updateRegionBoundary
-    } = useRegions(regionsPlugin, regions, colors, loopRegion, onRegionsChange);
+        updateRegionBoundary,
+    } = useRegions(regionsPlugin, regions, colors, loopRegions, onRegionsChange);
 
     useWaveSurferHotkeys(
         waveform,
@@ -148,9 +113,12 @@ const WaveformViewerComponent: React.FC<WavesurferViewerProps> = ({
         getTargetRegion,
         updateRegionBoundary,
         setActiveRegion,
-        setLoopRegion
+        setLoopRegions,
     );
 
+    if (isLoading) {
+        return <div>Loading...</div>;
+    }
 
     return (
         <div className="flex flex-col gap-4 p-4 w-full box-border">
@@ -167,7 +135,7 @@ const WaveformViewerComponent: React.FC<WavesurferViewerProps> = ({
                     currentTime={currentTime}
                     duration={duration}
                 />
-                <div className="flex  items-center gap-4">
+                <div className="flex items-center gap-4">
                     <button
                         onClick={reportRegionsToParent}
                         className="bg-gray-800 border-none border-radius-4px cursor-pointer p-2 flex items-center justify-center text-white"

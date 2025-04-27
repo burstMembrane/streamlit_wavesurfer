@@ -31,11 +31,12 @@ export const useWaveSurfer = ({
     const [duration, setDuration] = useState(0);
     const [isPlaying, setIsPlaying] = useState(false);
     const regionsPluginRef = useRef<RegionsPlugin | null>(null);
-    const { data: audioBlob, isSuccess } = useQuery({
+    const { data: audioBlob, isSuccess, isLoading } = useQuery({
         queryKey: ['audioData', audioSrc],
         queryFn: () => fetchAudioData(audioSrc),
         staleTime: Infinity,
     });
+
 
     const createWavesurfer = useCallback(() => {
         if (!containerRef.current || !audioBlob) return;
@@ -99,5 +100,6 @@ export const useWaveSurfer = ({
         skipBackward: () => waveformRef.current?.skip(-5),
         seekTo: (position: number) => waveformRef.current?.seekTo(position),
         setZoom: (level: number) => waveformRef.current?.zoom(level),
+        isLoading: Boolean(isLoading),
     };
 };

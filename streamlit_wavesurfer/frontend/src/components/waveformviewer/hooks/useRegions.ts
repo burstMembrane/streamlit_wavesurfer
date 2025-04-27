@@ -2,74 +2,82 @@ import RegionsPlugin from "wavesurfer.js/dist/plugins/regions.js"
 import { Region } from "../types";
 import { buildRegionId, lightenColor } from '../utils';
 import { useEffect, useCallback, useRef, useState } from "react";
-
+import { useQuery } from "@tanstack/react-query";
 export const useRegions = (
     regionsPlugin: RegionsPlugin | null,
     regions: Region[],
     colors: string[],
-    loopRegion: boolean,
+    loopRegions: boolean,
     onRegionsChange?: (regions: Region[]) => void
 ) => {
-    console.log(loopRegion)
     const [activeRegion, setActiveRegion] = useState<any>(null);
     const activeRegionRef = useRef<any>(null);
+    const loopRegionsRef = useRef<boolean>(loopRegions);
     const [regionOriginalColors, setRegionOriginalColors] = useState<Record<string, string>>({});
-
-    // Function to get the target region for editing
     const getTargetRegion = useCallback(() => {
         return activeRegionRef.current;
     }, []);
 
-    // Update active region reference
+    // Update loopRegionsRef when loopRegions prop changes
+    useEffect(() => {
+        console.log("loopRegions prop changed to:", loopRegions);
+        loopRegionsRef.current = loopRegions;
+    }, [loopRegions]);
+
+    const getLoopRegions = useCallback(() => {
+        return loopRegionsRef.current;
+    }, [loopRegionsRef]);
+
+    const { data: regionColors = [] } = useQuery(
+        {
+            queryKey: ['regionColors', JSON.stringify(regions), colors],
+            queryFn: () => {
+                return regions.map((region, index) => {
+                    const colorIndex = index % colors.length;
+                    const color = region.color || colors[colorIndex] || `rgba(100, 100, 100, 0.5)`;
+                    return {
+                        id: region.id || buildRegionId(region),
+                        color,
+                        lightenedColor: lightenColor(color)
+                    };
+                });
+            },
+            initialData: []
+        }
+    );
+
     useEffect(() => {
         activeRegionRef.current = activeRegion;
     }, [activeRegion]);
-
-    // Highlight active region
     useEffect(() => {
         if (activeRegion && regionsPlugin) {
-            // Store original color if not already stored
             if (!regionOriginalColors[activeRegion.id]) {
                 setRegionOriginalColors(prev => ({
                     ...prev,
                     [activeRegion.id]: activeRegion.color
                 }));
             }
-
-            // Get original color or current color
             const originalColor = regionOriginalColors[activeRegion.id] || activeRegion.color;
-
-            // Set the active region to a lighter color
             activeRegion.setOptions({
-                color: lightenColor(originalColor)
+                color: regionColors?.find(color => color.id === activeRegion.id)?.lightenedColor || lightenColor(originalColor)
             });
-
-            // Reset colors of all other regions
             regionsPlugin.getRegions().forEach(region => {
                 if (region.id !== activeRegion.id && regionOriginalColors[region.id]) {
                     region.setOptions({
-                        color: regionOriginalColors[region.id]
+                        color: regionColors?.find(color => color.id === region.id)?.color || regionOriginalColors[region.id]
                     });
                 }
             });
         }
-    }, [activeRegion, regionsPlugin, regionOriginalColors]);
+    }, [activeRegion, regionsPlugin, regionOriginalColors, regionColors]);
 
-    // Update regions in wavesurfer when props change
     useEffect(() => {
         if (!regionsPlugin) return;
-
-        // Clear existing regions
         regionsPlugin.clearRegions();
-
-        // Add regions
         regions.forEach((region, index) => {
             if (!region.start || !region.end) return;
-
-            // Make sure color index is within bounds
             const colorIndex = index % colors.length;
             const regionId = region.id || buildRegionId(region);
-
             try {
                 regionsPlugin.addRegion({
                     start: region.start,
@@ -94,10 +102,37 @@ export const useRegions = (
             regionsPlugin.on('region-clicked', (region) => {
                 setActiveRegion(region);
             });
+
+            regionsPlugin.on('region-out', (region) => {
+                console.log("loopRegions value in region-out:", loopRegionsRef.current);
+                if (loopRegionsRef.current) {
+                    console.log("looping region", region);
+
+                    // Important: Keep this region as the active region even when exiting
+                    // to maintain target region tracking during looping
+
+                    // Only play if still active/exists
+                    if (region && typeof region.play === 'function') {
+                        region.play();
+                    }
+                }
+            });
         };
 
         setupRegionEvents();
-    }, [regionsPlugin, regions, colors]);
+
+        // Cleanup event handlers when unmounting
+        return () => {
+            if (regionsPlugin) {
+                try {
+                    // Unsubscribe from all event handlers
+                    regionsPlugin.unAll();
+                } catch (e) {
+                    console.error("Error cleaning up region events:", e);
+                }
+            }
+        };
+    }, [regionsPlugin, regions, colors, getLoopRegions]);
 
     // Function to report regions back to parent
     const reportRegionsToParent = useCallback(() => {
@@ -126,7 +161,6 @@ export const useRegions = (
         onRegionsChange(regionsForParent);
     }, [regionsPlugin, onRegionsChange]);
 
-    // Function to update region boundaries
     const updateRegionBoundary = useCallback((targetRegion: any, options: any) => {
         if (!targetRegion) return;
         targetRegion.setOptions(options);
@@ -137,6 +171,7 @@ export const useRegions = (
         setActiveRegion,
         getTargetRegion,
         reportRegionsToParent,
-        updateRegionBoundary
+        updateRegionBoundary,
+        regionColors
     };
 };
