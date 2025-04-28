@@ -60,7 +60,8 @@ const WaveformViewerComponent: React.FC<WavesurferViewerProps> = ({
     onRegionsChange,
     regionColormap,
     showSpectrogram,
-    showMinimap
+    showMinimap,
+    showControls
 }) => {
     const waveformRef = useRef<HTMLDivElement>(null);
     const [loopRegions, setLoopRegions] = useState(false);
@@ -122,6 +123,16 @@ const WaveformViewerComponent: React.FC<WavesurferViewerProps> = ({
         return <div>Loading...</div>;
     }
 
+    if (!showControls) {
+        return (
+            <div className="flex flex-col gap-4 p-4 w-full box-border">
+                <div ref={waveformRef}
+                    id="waveform"
+                    className="w-full min-h-[200px] mb-4" />
+            </div>
+        )
+    }
+
     return (
         <div className="flex flex-col gap-4 p-4 w-full box-border">
             <div ref={waveformRef}
@@ -158,7 +169,7 @@ const WaveformViewerComponent: React.FC<WavesurferViewerProps> = ({
                             }}
                             className="w-24 flex-1"
                         />
-                        <KeyboardShortcuts showAll={regions.length > 0} />
+                        <KeyboardShortcuts showAll={regions && regions.length > 0} />
                     </div>
                 </div>
             </div>

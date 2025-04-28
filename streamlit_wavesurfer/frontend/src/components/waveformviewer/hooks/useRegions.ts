@@ -2,13 +2,26 @@ import RegionsPlugin from "wavesurfer.js/dist/plugins/regions.js";
 import { Region } from "../types";
 import { buildRegionId, lightenColor } from '../utils';
 import { useEffect, useCallback, useRef, useMemo } from "react";
+
 export const useRegions = (
     regionsPlugin: RegionsPlugin | null,
-    regions: Region[],
+    regions: Region[] | null,
     colors: string[],
     loopRegions: boolean,
     onRegionsChange?: (regions: Region[]) => void
 ) => {
+    // Early return if regions is null or empty
+    if (!regions || regions.length === 0) {
+        return {
+            activeRegion: null,
+            setActiveRegion: () => { },
+            getTargetRegion: () => null,
+            reportRegionsToParent: () => { },
+            updateRegionBoundary: () => { },
+            regionColors: []
+        };
+    }
+
     const activeRegionRef = useRef<any>(null);
     const loopRegionsRef = useRef<boolean>(loopRegions);
     const regionsPluginRef = useRef<RegionsPlugin | null>(null);

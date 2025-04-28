@@ -21,8 +21,9 @@ export interface WavesurferComponentProps {
         audio_src: string;
         wave_options: WaveSurferUserOptions;
         region_colormap: string;
-        show_spectrogram: boolean;
-        show_minimap: boolean;
+        spectrogram: boolean;
+        minimap: boolean;
+        controls: boolean;
     };
 }
 
@@ -68,8 +69,9 @@ const WavesurferComponent = ({ args }: WavesurferComponentProps) => {
             }}
             onRegionsChange={onRegionsChange}
             regionColormap={args.region_colormap}
-            showSpectrogram={args.show_spectrogram}
-            showMinimap={args.show_minimap}
+            showSpectrogram={args.spectrogram}
+            showMinimap={args.minimap}
+            showControls={args.controls}
         />
     );
 

@@ -31,6 +31,7 @@ export interface WavesurferViewerProps {
     regionColormap: string;
     showSpectrogram: boolean;
     showMinimap: boolean;
+    showControls: boolean;
 }
 
 

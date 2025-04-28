@@ -18,7 +18,7 @@ AudioData = str | bytes | io.BytesIO | np.ndarray | io.FileIO
 
 # When False => run: npm start
 # When True => run: npm run build
-_RELEASE = True
+_RELEASE = False
 
 Colormap = Literal[
     "jet",
@@ -237,6 +237,7 @@ def wavesurfer(
     region_colormap: Optional[Colormap] = None,
     show_spectrogram: bool = False,
     show_minimap: bool = False,
+    show_controls: bool = True,
 ) -> bool:
     """Nice audio/video player with audio track selection support.
 
@@ -256,8 +257,9 @@ def wavesurfer(
         default=0,
         wave_options=wave_options.to_dict(),
         region_colormap=region_colormap,
-        show_spectrogram=show_spectrogram,
-        show_minimap=show_minimap,
+        spectrogram=show_spectrogram,
+        minimap=show_minimap,
+        controls=show_controls,
     )
     return component_value
 
@@ -321,6 +323,7 @@ if not _RELEASE:
         region_colormap=colormap_selection,
         show_spectrogram=False,
         show_minimap=False,
+        show_controls=False,
     )
 
     # Only update session_state.regions when state["ts"] is new
