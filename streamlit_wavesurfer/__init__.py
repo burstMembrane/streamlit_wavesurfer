@@ -1,5 +1,6 @@
 __all__ = ["wavesurfer", "Region", "RegionColormap", "WaveSurferOptions"]
 
+
 import urllib.parse
 from dataclasses import dataclass
 from pathlib import Path
@@ -12,7 +13,7 @@ from streamlit.elements.media import AudioProto, marshall_audio
 
 # When False => run: npm start
 # When True => run: npm run build
-_RELEASE = False
+_RELEASE = True
 
 
 Colormap = Literal[
@@ -122,8 +123,9 @@ if not _RELEASE:
     )
 else:
     parent_dir = Path(__file__).parent
-    build_dir = parent_dir / "frontend" / "build"
-    _component_func = components.declare_component("wavesurfer", path=str(build_dir))
+    build_dir = parent_dir / "frontend" / "dist"
+    _component_func = components.declare_component(
+        "wavesurfer", path=str(build_dir))
 
 
 def resolve_audio_src(audio_src: str) -> str:
@@ -141,8 +143,10 @@ def resolve_audio_src(audio_src: str) -> str:
     if _RELEASE and not audio_src.startswith("http"):
         audio_path = Path(audio_src)
         if not audio_path.exists():
-            raise ValueError(f"Provided audio file {audio_src} does not exist!")
-        session = st.runtime.get_instance()._session_mgr.list_active_sessions()[0]
+            raise ValueError(
+                f"Provided audio file {audio_src} does not exist!")
+        session = st.runtime.get_instance(
+        )._session_mgr.list_active_sessions()[0]
         st_base_url = urllib.parse.urlunparse(
             [
                 session.client.request.protocol,
@@ -172,7 +176,8 @@ def resolve_audio_src(audio_src: str) -> str:
         if not audio_src.startswith("http"):
             audio_path = Path(audio_src)
             if not audio_path.exists():
-                raise ValueError(f"Provided audio file {audio_src} does not exist!")
+                raise ValueError(
+                    f"Provided audio file {audio_src} does not exist!")
             # Serve the file through the dev server
             return f"http://localhost:3001/{audio_path.name}"
         else:
@@ -199,17 +204,12 @@ def wavesurfer(
 
     audio_url = resolve_audio_src(audio_src)
     st.write(wave_options.to_dict())
-    if not regions:
-        regions = []
-    # handle case where regions is a list of dicts
-    if isinstance(regions, list) and all(isinstance(r, dict) for r in regions):
-        regions = RegionList(regions)
-    # handle case where regions is empty
-    elif not regions:
-        regions = RegionList([])
+
+    # Handle regions input
+
     component_value = _component_func(
         audio_src=audio_url,
-        regions=regions.to_dict() if regions else None,
+        regions=None,
         key=key,
         default=0,
         wave_options=wave_options.to_dict(),
@@ -230,7 +230,8 @@ if not _RELEASE:
     @st.cache_data
     def regions() -> List[Region]:
         """Sample regions from the audio file."""
-        regions_path = Path(__file__).parent / "frontend" / "public" / "because.json"
+        regions_path = Path(__file__).parent / "frontend" / \
+            "public" / "because.json"
         with open(regions_path, "r") as f:
             regions = json.load(f)
         return regions
@@ -238,13 +239,15 @@ if not _RELEASE:
     @st.cache_data
     def audio_src() -> str:
         """Sample audio source from the audio file."""
-        audio_path = Path(__file__).parent / "frontend" / "public" / "because.mp3"
+        audio_path = Path(__file__).parent / "frontend" / \
+            "public" / "because.mp3"
         return str(audio_path.absolute())
 
     st.set_page_config(layout="wide")
 
     regions = RegionList(regions())
-    audio_file_path = Path(__file__).parent / "frontend" / "public" / "because.mp3"
+    audio_file_path = Path(__file__).parent / \
+        "frontend" / "public" / "because.mp3"
     colormap_options = list(Colormap.__args__)
     colormap_selection = st.selectbox(
         "Select a colormap",
@@ -253,7 +256,8 @@ if not _RELEASE:
     )
     cols = st.columns(2)
     with cols[0]:
-        wavecolor_selection = st.color_picker("Select a wave color", value="#4f4f4f")
+        wavecolor_selection = st.color_picker(
+            "Select a wave color", value="#4f4f4f")
 
     with cols[1]:
         progresscolor_selection = st.color_picker(

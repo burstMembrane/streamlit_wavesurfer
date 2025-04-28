@@ -28,9 +28,9 @@ export const useRegions = (
         return activeRegionRef.current;
     }, []);
 
-    const getLoopRegions = useCallback(() => {
-        return loopRegionsRef.current;
-    }, []);
+    // const getLoopRegions = useCallback(() => {
+    //     return loopRegionsRef.current;
+    // }, []);
 
     const getCleanContent = useCallback((content: any): string => {
         let result = '';
@@ -171,7 +171,7 @@ export const useRegions = (
                 setActiveRegion(region);
             };
 
-            const handleRegionOut = (region: any) => {
+            const handleRegionOut = () => {
                 if (loopRegionsRef.current && activeRegionRef.current && typeof activeRegionRef.current.play === 'function') {
                     try {
                         activeRegionRef.current.play();

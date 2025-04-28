@@ -9,7 +9,7 @@ node_modules
 /coverage
 /build
 .idea
-
+dist/
 
 # misc
 .DS_Store
