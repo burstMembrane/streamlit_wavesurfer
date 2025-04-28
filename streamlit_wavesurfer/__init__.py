@@ -15,31 +15,6 @@ from streamlit.elements.media import AudioProto, marshall_audio
 _RELEASE = False
 
 
-colormaps = [
-    "jet",
-    "hsv",
-    "hot",
-    "cool",
-    "spring",
-    "summer",
-    "autumn",
-    "winter",
-    "bone",
-    "copper",
-    "greys",
-    "YIGnBu",
-    "greens",
-    "YIOrRd",
-    "bluered",
-    "RdBu",
-    "picnic",
-    "rainbow",
-    "portland",
-    "blackbody",
-    "earth",
-    "electric",
-]
-
 Colormap = Literal[
     "jet",
     "hsv",
@@ -63,25 +38,18 @@ Colormap = Literal[
     "blackbody",
     "earth",
     "electric",
+    "magma",
+    "viridis",
+    "inferno",
+    "plasma",
+    "turbo",
+    "cubehelix",
+    "alpha",
+    "bathymetry",
+    "cdom",
+    "chlorophyll",
+    "density",
 ]
-
-
-@dataclass
-class RegionColormap:
-    name: Colormap
-
-    def __str__(self):
-        return self.name
-
-    def __repr__(self):
-        return self.name
-
-    @classmethod
-    def get_all_colormaps(cls):
-        return colormaps
-
-    def __iter__(self):
-        return iter(self.get_all_colormaps())
 
 
 @dataclass
@@ -230,7 +198,7 @@ def wavesurfer(
     """
 
     audio_url = resolve_audio_src(audio_src)
-
+    st.write(wave_options.to_dict())
     if not regions:
         regions = []
     # handle case where regions is a list of dicts
@@ -277,12 +245,11 @@ if not _RELEASE:
 
     regions = RegionList(regions())
     audio_file_path = Path(__file__).parent / "frontend" / "public" / "because.mp3"
-    # colormap selection
+    colormap_options = list(Colormap.__args__)
     colormap_selection = st.selectbox(
         "Select a colormap",
-        RegionColormap.get_all_colormaps(),
-        # index for each colormap
-        index=colormaps.index("earth"),
+        colormap_options,
+        index=colormap_options.index("magma"),
     )
     cols = st.columns(2)
     with cols[0]:
@@ -311,7 +278,7 @@ if not _RELEASE:
         ),
         region_colormap=colormap_selection,
         show_spectrogram=False,
-        show_minimap=True,
+        show_minimap=False,
     )
 
     # Only update session_state.regions when state["ts"] is new

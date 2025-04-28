@@ -1,0 +1,29 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+---
+description: Style guide for coding in react applications
+globs: *.tsx
+alwaysApply: false
+---
+
+Rules:
+
+When coding in react - be aware of the rules of react.
+Keep logic and ui seperate where possible by utilizing inline hooks separate from component code.
+Ensure you use the latest React best practices.
+Ensure type safety with props, data structures and state
+DO NOT use excessive `useEffect` for mutations. Instead use refs to ensure any non-ui related values are able to be updated without component re-render.
+DO NOT add excessive commenting - code should be self docuemnting when the types, variable names and functions are read.
+Prefer creating smaller pure functions to larger ones with a lot of side-effects. We want our code to be testable and debuggable.
+When console.logging - prefer this pattern `[module_name](function_name) <log value>`
+
+
+Prefer the use of:
+
+`shadcn/ui` for a component library
+`tailwindcss` for CSS implementations
+`useQuery` for data fetching
+`useMutation` for mutations

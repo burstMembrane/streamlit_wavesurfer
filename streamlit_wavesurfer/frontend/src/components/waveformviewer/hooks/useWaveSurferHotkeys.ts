@@ -1,8 +1,7 @@
 import RegionsPlugin from "wavesurfer.js/dist/plugins/regions";
 import type WaveSurfer from "wavesurfer.js";
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useCallback } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
-
 
 export const useWaveSurferHotkeys = (
     waveform: WaveSurfer | null,
@@ -12,10 +11,80 @@ export const useWaveSurferHotkeys = (
     setActiveRegion: (region: any) => void,
     setLoopRegion: (state: boolean | ((prev: boolean) => boolean)) => void,
 ) => {
-    const waveformRef = useRef(waveform);
-    const regionsRef = useRef(regionsPlugin);
+    const waveformRef = useRef<WaveSurfer | null>(waveform);
+    const regionsRef = useRef<RegionsPlugin | null>(regionsPlugin);
     const [isLooping, setIsLooping] = useState(false);
+    const [hotkeysEnabled, setHotkeysEnabled] = useState(false);
     const editHistory = useRef<Array<{ region: any, prevStart: number, prevEnd: number }>>([]);
+    const containerRef = useRef<HTMLElement | null>(null);
+
+    // Manage hotkeys setup
+    const setupHotkeys = useCallback(() => {
+        if (!waveform) return;
+
+        // Set refs and state
+        waveformRef.current = waveform;
+        regionsRef.current = regionsPlugin;
+
+        // Get container from waveform
+        const container = waveform.getWrapper();
+        if (!container) return;
+
+        containerRef.current = container;
+
+        // Make container focusable
+        container.tabIndex = 0;
+        container.style.outline = 'none';
+
+        // Ensure focus and hotkeys are enabled when interacting with waveform
+        const enableAndFocus = () => {
+            setHotkeysEnabled(true);
+            if (containerRef.current) {
+                containerRef.current.focus();
+            }
+        };
+
+        // Add event listeners for focus
+        container.addEventListener('click', enableAndFocus);
+        container.addEventListener('mousedown', enableAndFocus);
+        container.addEventListener('keydown', enableAndFocus, true);
+        container.addEventListener('mouseover', enableAndFocus);
+
+        // Enable hotkeys initially
+        setHotkeysEnabled(true);
+        container.focus();
+
+        // Setup global listeners to ensure hotkeys work
+        const handleGlobalInteraction = (e: MouseEvent | KeyboardEvent) => {
+            // Check if interaction is within the waveform container or its children
+            if (container.contains(e.target as Node)) {
+                setHotkeysEnabled(true);
+                container.focus();
+            }
+        };
+
+        // Global event listeners 
+        document.addEventListener('keydown', handleGlobalInteraction, true);
+        document.addEventListener('mousedown', handleGlobalInteraction, true);
+
+        // Clean up function
+        return () => {
+            if (containerRef.current) {
+                containerRef.current.removeEventListener('click', enableAndFocus);
+                containerRef.current.removeEventListener('mousedown', enableAndFocus);
+                containerRef.current.removeEventListener('keydown', enableAndFocus, true);
+                containerRef.current.removeEventListener('mouseover', enableAndFocus);
+            }
+            document.removeEventListener('keydown', handleGlobalInteraction, true);
+            document.removeEventListener('mousedown', handleGlobalInteraction, true);
+        };
+    }, [waveform, regionsPlugin]);
+
+    // Apply hotkeys setup
+    useEffect(() => {
+        const cleanup = setupHotkeys();
+        return cleanup;
+    }, [setupHotkeys]);
 
     const handleRegionEdit = (region: any, start: number, end: number) => {
         // Push current state before change to history for undo
@@ -29,6 +98,7 @@ export const useWaveSurferHotkeys = (
             end: end
         });
     }
+
     const undoAllEdits = () => {
         // conduct all edits in reverse order
         for (let i = editHistory.current.length - 1; i >= 0; i--) {
@@ -39,6 +109,7 @@ export const useWaveSurferHotkeys = (
             });
         }
     }
+
     const undoLastEdit = () => {
         if (editHistory.current.length === 0) {
             return false;
@@ -54,28 +125,25 @@ export const useWaveSurferHotkeys = (
         return true;
     }
 
-    useEffect(() => {
-        waveformRef.current = waveform;
-        regionsRef.current = regionsPlugin;
-    }, [waveform, regionsPlugin]);
-
     const stopLoopingIfNeeded = () => {
         if (isLooping) {
             setLoopRegion(false);
             setIsLooping(false);
         }
     };
+
+    // Hotkey definitions with the 'enabled' setting
     useHotkeys('u', (e) => {
         e.preventDefault();
-        console.log("Attempting to undo last region edit");
+        console.log("[hotkeys] Attempting to undo last region edit");
         const success = undoLastEdit();
-        console.log(`Undo ${success ? 'successful' : 'failed'}`);
-    }, { preventDefault: true, enabled: true });
+        console.log(`[hotkeys] Undo ${success ? 'successful' : 'failed'}`);
+    }, { preventDefault: true, enabled: hotkeysEnabled });
 
     useHotkeys('r', (e) => {
         e.preventDefault();
         undoAllEdits();
-    }, { preventDefault: true, enabled: true });
+    }, { preventDefault: true, enabled: hotkeysEnabled });
 
     useHotkeys('space', (e) => {
         e.preventDefault();
@@ -86,7 +154,7 @@ export const useWaveSurferHotkeys = (
         } else {
             wave.play();
         }
-    }, { preventDefault: true, enabled: waveformRef.current !== null });
+    }, { preventDefault: true, enabled: hotkeysEnabled });
 
     // Navigate left (seek backward)
     useHotkeys('left', (e) => {
@@ -96,7 +164,7 @@ export const useWaveSurferHotkeys = (
         if (!wave) return;
         const currentTime = wave.getCurrentTime();
         wave.seekTo(Math.max(0, currentTime - 0.1) / wave.getDuration());
-    }, { preventDefault: true, enabled: waveformRef.current !== null });
+    }, { preventDefault: true, enabled: hotkeysEnabled });
 
     // Navigate right (seek forward)
     useHotkeys('right', (e) => {
@@ -107,7 +175,7 @@ export const useWaveSurferHotkeys = (
         const currentTime = wave.getCurrentTime();
         const duration = wave.getDuration();
         wave.seekTo(Math.min(duration, currentTime + 0.1) / duration);
-    }, { preventDefault: true, enabled: waveformRef.current !== null });
+    }, { preventDefault: true, enabled: hotkeysEnabled });
 
     // Navigate to previous region
     useHotkeys('up', (e) => {
@@ -151,7 +219,7 @@ export const useWaveSurferHotkeys = (
         if (wasLooping) {
             setIsLooping(true);
         }
-    }, { preventDefault: true, enabled: regionsRef.current !== null });
+    }, { preventDefault: true, enabled: hotkeysEnabled });
 
     // Navigate to next region
     useHotkeys('down', (e) => {
@@ -185,7 +253,7 @@ export const useWaveSurferHotkeys = (
         wave.seekTo(nextTargetRegion.start / wave.getDuration());
         // Set as active region
         setActiveRegion(nextTargetRegion);
-    }, { preventDefault: true, enabled: regionsRef.current !== null });
+    }, { preventDefault: true, enabled: hotkeysEnabled });
 
     // Set region start (i key)
     useHotkeys('i', (e) => {
@@ -199,7 +267,7 @@ export const useWaveSurferHotkeys = (
             // Ensure this becomes the active region
             setActiveRegion(targetRegion);
         }
-    }, { preventDefault: true, enabled: waveformRef.current !== null });
+    }, { preventDefault: true, enabled: hotkeysEnabled });
 
     // Set region end (o key)
     useHotkeys('o', (e) => {
@@ -213,7 +281,7 @@ export const useWaveSurferHotkeys = (
             // Ensure this becomes the active region
             setActiveRegion(targetRegion);
         }
-    }, { preventDefault: true, enabled: waveformRef.current !== null });
+    }, { preventDefault: true, enabled: hotkeysEnabled });
 
     // Jump to region start (s key)
     useHotkeys('s', (e) => {
@@ -229,7 +297,7 @@ export const useWaveSurferHotkeys = (
                 wave.play();
             }
         }
-    }, { preventDefault: true, enabled: waveformRef.current !== null });
+    }, { preventDefault: true, enabled: hotkeysEnabled });
 
     // Jump to region end (e key)
     useHotkeys('e', (e) => {
@@ -245,7 +313,7 @@ export const useWaveSurferHotkeys = (
                 wave.play();
             }
         }
-    }, { preventDefault: true, enabled: waveformRef.current !== null });
+    }, { preventDefault: true, enabled: hotkeysEnabled });
 
     // Jump to start of track (w key)
     useHotkeys('w', (e) => {
@@ -254,15 +322,22 @@ export const useWaveSurferHotkeys = (
         const wave = waveformRef.current;
         if (!wave) return;
         wave.seekTo(0);
-    }, { preventDefault: true, enabled: waveformRef.current !== null });
+    }, { preventDefault: true, enabled: hotkeysEnabled });
 
     // Toggle loop for current region (l key)
     useHotkeys('l', (e) => {
         e.preventDefault();
         setIsLooping(prev => !prev);
         setLoopRegion(prev => !prev);
-    }, { preventDefault: true, enabled: waveformRef.current !== null });
+    }, { preventDefault: true, enabled: hotkeysEnabled });
 
-    // Return a noop function as we no longer need to manually register/unregister listeners
-    return () => { };
+    // Method to manually enable hotkeys if needed
+    const enableHotkeys = useCallback(() => {
+        setHotkeysEnabled(true);
+        if (containerRef.current) {
+            containerRef.current.focus();
+        }
+    }, []);
+
+    return enableHotkeys;
 };

@@ -38,7 +38,12 @@ export const useWaveSurfer = ({
         queryFn: () => fetchAudioData(audioSrc),
         staleTime: Infinity,
     });
-
+    // update waveOptions when changes are received from the parent
+    useEffect(() => {
+        if (waveOptions) {
+            waveformRef.current?.setOptions(waveOptions);
+        }
+    }, [waveOptions]);
 
     const createWavesurfer = useCallback(() => {
         if (!containerRef.current || !audioBlob) return;

@@ -1,9 +1,7 @@
-import RegionsPlugin from "wavesurfer.js/dist/plugins/regions.js"
+import RegionsPlugin from "wavesurfer.js/dist/plugins/regions.js";
 import { Region } from "../types";
 import { buildRegionId, lightenColor } from '../utils';
-import { useEffect, useCallback, useRef, useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { tryCatch } from "@/utils";
+import { useEffect, useCallback, useRef, useMemo } from "react";
 export const useRegions = (
     regionsPlugin: RegionsPlugin | null,
     regions: Region[],
@@ -11,29 +9,21 @@ export const useRegions = (
     loopRegions: boolean,
     onRegionsChange?: (regions: Region[]) => void
 ) => {
+    // Refs setup
     const activeRegionRef = useRef<any>(null);
     const loopRegionsRef = useRef<boolean>(loopRegions);
     const regionsPluginRef = useRef<RegionsPlugin | null>(null);
     const regionOriginalColorsRef = useRef<Record<string, string>>({});
 
-    const [activeRegion, setActiveRegion] = useState<any>(null);
+    regionsPluginRef.current = regionsPlugin;
+    loopRegionsRef.current = loopRegions;
 
-    const regionsKey = useMemo(() => JSON.stringify(regions), [regions]);
+    const regionsKey = useMemo(() => {
+        const regionIds = regions.map(region => region.id || buildRegionId(region)).join('-');
+        return `${regions.length}-${regionIds}`;
+    }, [regions]);
     const colorsKey = useMemo(() => JSON.stringify(colors), [colors]);
 
-    useEffect(() => {
-        regionsPluginRef.current = regionsPlugin;
-    }, [regionsPlugin]);
-
-    useEffect(() => {
-        loopRegionsRef.current = loopRegions;
-    }, [loopRegions]);
-
-    useEffect(() => {
-        activeRegionRef.current = activeRegion;
-    }, [activeRegion]);
-
-    // Memoized callbacks to avoid recreation on rerenders
     const getTargetRegion = useCallback(() => {
         return activeRegionRef.current;
     }, []);
@@ -42,103 +32,167 @@ export const useRegions = (
         return loopRegionsRef.current;
     }, []);
 
-    // Use React Query for region colors calculation
-    const { data: regionColors = [] } = useQuery({
-        queryKey: ['regionColors', regionsKey, colorsKey],
-        queryFn: () => {
-            return regions.map((region, index) => {
-                const colorIndex = index % colors.length;
-                const color = region.color || colors[colorIndex] || `rgba(100, 100, 100, 0.5)`;
-                return {
-                    id: region.id || buildRegionId(region),
-                    color,
-                    lightenedColor: lightenColor(color)
-                };
+    const getCleanContent = useCallback((content: any): string => {
+        let result = '';
+        if (typeof content === 'string') {
+            result = content;
+        } else if (content && typeof content.textContent === 'string') {
+            result = content.textContent;
+        } else if (content && content.toString) {
+            result = content.toString();
+        }
+        return result.replace(/↻\s*/g, '');
+    }, []);
+
+    const regionColors = useMemo(() => {
+        return regions.map((region, index) => {
+            const colorIndex = index % colors.length;
+            const color = region.color || colors[colorIndex] || "rgba(100, 100, 100, 0.5)";
+            return {
+                id: region.id || buildRegionId(region),
+                color,
+                lightenedColor: lightenColor(color),
+            };
+        });
+    }, [regionsKey, colorsKey]);
+
+    // Show looping indicator on the active region
+    const showLoopingIndicator = useCallback(() => {
+        if (!regionsPluginRef.current || !activeRegionRef.current) return;
+
+        try {
+            const activeRegion = activeRegionRef.current;
+            const regionsPlugin = regionsPluginRef.current;
+            const isLooping = loopRegionsRef.current;
+
+            // Get all plugin regions
+            const pluginRegions = regionsPlugin.getRegions();
+            if (!pluginRegions || !Array.isArray(pluginRegions)) return;
+
+            pluginRegions.forEach(region => {
+                if (!region) return;
+
+                const contentText = getCleanContent(region.content);
+                const displayContent = (isLooping && region.id === activeRegion.id)
+                    ? `↻ ${contentText}`
+                    : contentText;
+
+                try {
+                    region.setOptions({
+                        content: displayContent
+                    });
+                } catch (error) {
+                    console.log("[useRegions](showLoopingIndicator) Error setting region options:", error);
+                }
             });
-        },
-        initialData: []
-    });
+        } catch (error) {
+            console.log("[useRegions](showLoopingIndicator) Error:", error);
+        }
+    }, [getCleanContent]);
+
+    useEffect(() => {
+        showLoopingIndicator();
+    }, [showLoopingIndicator, loopRegions]);
 
     const updateActiveRegionColors = useCallback((activeReg: any) => {
-        if (!activeReg || !regionsPluginRef.current) return;
-
-        const regionId = activeReg.id;
-        if (!regionOriginalColorsRef.current[regionId]) {
-            regionOriginalColorsRef.current[regionId] = activeReg.color;
-        }
-
-        const originalColor = regionOriginalColorsRef.current[regionId] || activeReg.color;
-        const colorInfo = regionColors.find(color => color.id === regionId);
-
-        activeReg.setOptions({
-            color: colorInfo?.lightenedColor || lightenColor(originalColor)
-        });
-
-        // Reset other regions to their original colors
-        regionsPluginRef.current.getRegions().forEach(region => {
-            if (region.id !== regionId && regionOriginalColorsRef.current[region.id]) {
-                const otherColorInfo = regionColors.find(color => color.id === region.id);
-                region.setOptions({
-                    color: otherColorInfo?.color || regionOriginalColorsRef.current[region.id]
-                });
+        if (!activeReg || !regionsPluginRef.current || !regionColors || !regionColors.length) return;
+        try {
+            const regionId = activeReg.id;
+            if (!regionOriginalColorsRef.current[regionId]) {
+                regionOriginalColorsRef.current[regionId] = activeReg.color;
             }
-        });
+
+            const originalColor = regionOriginalColorsRef.current[regionId] || activeReg.color;
+            const regionColor = regionColors.find(color => color.id === regionId);
+
+            // Get all regions
+            const regions = regionsPluginRef.current.getRegions();
+            if (!regions || !Array.isArray(regions)) return;
+
+            // Process all regions in a single loop
+            regions.forEach(region => {
+                if (!region) return;
+
+                if (region.id === regionId) {
+                    region.setOptions({
+                        color: regionColor?.lightenedColor || lightenColor(originalColor)
+                    });
+                } else if (regionOriginalColorsRef.current[region.id]) {
+                    const otherColorInfo = regionColors.find(color => color.id === region.id);
+                    region.setOptions({
+                        color: otherColorInfo?.color || regionOriginalColorsRef.current[region.id]
+                    });
+                }
+            });
+        } catch (error) {
+            console.log("[useRegions](updateActiveRegionColors) Error:", error);
+        }
     }, [regionColors]);
 
-    useEffect(() => {
-        if (activeRegion) {
-            updateActiveRegionColors(activeRegion);
-        }
-    }, [activeRegion, updateActiveRegionColors]);
+    const setActiveRegion = useCallback((region: any) => {
+        if (!region) return;
+        activeRegionRef.current = region;
+        updateActiveRegionColors(region);
+        setTimeout(() => {
+            showLoopingIndicator();
+        }, 10);
+    }, [updateActiveRegionColors, showLoopingIndicator]);
 
-    useEffect(() => {
+    // Setup regions and event handlers
+    const setupRegionsAndHandlers = useCallback(() => {
         if (!regionsPlugin) return;
 
-        // Clear existing regions
-        regionsPlugin.clearRegions();
+        let hasSetupEventHandlers = false;
+        console.log("setupRegionsAndHandlers", regionsPlugin, true);
+        try {
+            regionsPlugin.clearRegions();
 
-        // Add regions
-        regions.forEach((region, index) => {
-            if (!region.start || !region.end || !region.content) return;
+            regions.forEach((region, index) => {
+                if (region.start == null || region.end == null || region.content == null) return;
 
-            const colorIndex = index % colors.length;
-            const regionId = region.id || buildRegionId(region);
-            regionsPlugin.addRegion({
-                start: region.start,
-                end: region.end,
-                content: region.content,
-                id: regionId,
-                color: colors[colorIndex] || `rgba(100, 100, 100, 0.5)`,
-                drag: region.drag,
-                resize: region.resize,
+                const colorIndex = index % colors.length;
+                const regionId = region.id || buildRegionId(region);
+                regionsPlugin.addRegion({
+                    start: region.start,
+                    end: region.end,
+                    content: region.content,
+                    id: regionId,
+                    color: colors[colorIndex] || `rgba(100, 100, 100, 0.5)`,
+                    drag: region.drag,
+                    resize: region.resize,
+                });
             });
-        });
 
-        // Set up event handlers without closures that would capture stale values
+            const handleRegionIn = (region: any) => {
+                setActiveRegion(region);
+            };
 
-        // Set up event handlers without closures that would capture stale values
-        const handleRegionIn = (region: any) => {
-            setActiveRegion(region);
-        };
+            const handleRegionClicked = (region: any) => {
+                setActiveRegion(region);
+            };
 
-        const handleRegionClicked = (region: any) => {
-            setActiveRegion(region);
-        };
+            const handleRegionOut = (region: any) => {
+                if (loopRegionsRef.current && activeRegionRef.current && typeof activeRegionRef.current.play === 'function') {
+                    try {
+                        activeRegionRef.current.play();
+                    } catch (error) {
+                        console.log("[useRegions](handleRegionOut) Error playing region:", error);
+                    }
+                }
+            };
 
-        const handleRegionOut = (region: any) => {
-            if (loopRegionsRef.current && region && typeof region.play === 'function') {
-                region.play();
-            }
-        };
+            // Add event listeners
+            regionsPlugin.on('region-in', handleRegionIn);
+            regionsPlugin.on('region-clicked', handleRegionClicked);
+            regionsPlugin.on('region-out', handleRegionOut);
 
-        // Add event listeners
-        regionsPlugin.on('region-in', handleRegionIn);
-        regionsPlugin.on('region-clicked', handleRegionClicked);
-        regionsPlugin.on('region-out', handleRegionOut);
+            hasSetupEventHandlers = true;
+        } catch (error) {
+            console.log("[useRegions](setupRegions) Error:", error);
+        }
 
-        // Cleanup event handlers
         return () => {
-            if (regionsPlugin) {
+            if (regionsPlugin && hasSetupEventHandlers) {
                 try {
                     regionsPlugin.unAll();
                 } catch (e) {
@@ -146,44 +200,75 @@ export const useRegions = (
                 }
             }
         };
-    }, [regionsPlugin, regions, colors]);
+    }, [regionsPlugin, regions, colors, setActiveRegion]);
 
-    // Report regions to parent without causing rerenders
+    // Update active region colors when regionsPlugin changes
+    const syncActiveRegionOnPluginChange = useCallback(() => {
+        if (!regionsPlugin) return;
+        updateActiveRegionColors(activeRegionRef.current);
+        showLoopingIndicator();
+    }, [regionsPlugin, updateActiveRegionColors, showLoopingIndicator]);
+
+    // Apply the setup regions and handlers useEffect
+    useEffect(() => {
+        const cleanup = setupRegionsAndHandlers();
+        return cleanup;
+    }, [setupRegionsAndHandlers]);
+
+    useEffect(() => {
+        syncActiveRegionOnPluginChange();
+    }, [syncActiveRegionOnPluginChange]);
+
+    // Report regions to parent
     const reportRegionsToParent = useCallback(() => {
         const plugin = regionsPluginRef.current;
         if (!plugin || !onRegionsChange) return;
 
-        const currentRegions = plugin.getRegions();
-        const regionsForParent = currentRegions.map(wsRegion => {
-            let content = '';
-            if (typeof wsRegion.content === 'string') {
-                content = wsRegion.content;
-            } else if (wsRegion.content instanceof HTMLElement) {
-                content = wsRegion.content.textContent || '';
-            }
+        try {
+            const currentRegions = plugin.getRegions();
+            if (!currentRegions || !Array.isArray(currentRegions)) return;
 
-            return {
-                id: wsRegion.id,
-                start: wsRegion.start,
-                end: wsRegion.end,
-                content: content,
-                color: wsRegion.color,
-                drag: wsRegion.drag,
-                resize: wsRegion.resize
-            };
-        });
+            const regionsForParent = currentRegions.map(wsRegion => {
+                // Use the safe content extractor
+                const content = getCleanContent(wsRegion.content);
 
-        onRegionsChange(regionsForParent);
-    }, [onRegionsChange]);
+                return {
+                    id: wsRegion.id,
+                    start: wsRegion.start,
+                    end: wsRegion.end,
+                    content: content,
+                    color: wsRegion.color,
+                    drag: wsRegion.drag,
+                    resize: wsRegion.resize
+                };
+            });
+
+            onRegionsChange(regionsForParent);
+        } catch (error) {
+            console.log("[useRegions](reportRegionsToParent) Error:", error);
+        }
+    }, [onRegionsChange, getCleanContent]);
 
     const updateRegionBoundary = useCallback((targetRegion: any, options: any) => {
         if (!targetRegion) return;
-        targetRegion.setOptions(options);
-    }, []);
+
+        try {
+            targetRegion.setOptions(options);
+
+            // If boundary changes, make sure looping indicator is updated
+            if (loopRegionsRef.current && activeRegionRef.current) {
+                setTimeout(() => {
+                    showLoopingIndicator();
+                }, 10);
+            }
+        } catch (error) {
+            console.log("[useRegions](updateRegionBoundary) Error:", error);
+        }
+    }, [showLoopingIndicator]);
 
     // Return stable interface with minimal state
     return {
-        activeRegion,
+        activeRegion: activeRegionRef.current,
         setActiveRegion,
         getTargetRegion,
         reportRegionsToParent,
