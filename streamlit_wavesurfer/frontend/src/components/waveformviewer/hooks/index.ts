@@ -14,6 +14,7 @@ export const useTimeFormatter = () => {
 };
 
 export const useRegionColors = (regions: Region[], colormapName: string) => {
+    if (!regions) return [];
     return useMemo(() => {
         if (regions.length === 0) return [];
 

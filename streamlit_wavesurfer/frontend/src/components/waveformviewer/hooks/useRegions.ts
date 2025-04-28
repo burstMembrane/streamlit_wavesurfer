@@ -9,7 +9,6 @@ export const useRegions = (
     loopRegions: boolean,
     onRegionsChange?: (regions: Region[]) => void
 ) => {
-    // Refs setup
     const activeRegionRef = useRef<any>(null);
     const loopRegionsRef = useRef<boolean>(loopRegions);
     const regionsPluginRef = useRef<RegionsPlugin | null>(null);

@@ -8,5 +8,6 @@ dev:
 	tmux attach -t dev
 
 build:
+	uv build .
 	cd streamlit_wavesurfer/frontend && npm run build
 

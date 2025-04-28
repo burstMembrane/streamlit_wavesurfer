@@ -30,6 +30,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "ext-dev": "vite build --watch",
     "lint": "eslint .",
     "preview": "vite preview"
   },
