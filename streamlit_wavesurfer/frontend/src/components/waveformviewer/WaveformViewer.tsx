@@ -4,8 +4,11 @@ import { WavesurferViewerProps } from "@waveformviewer/types";
 import { useRegions, useWaveSurfer, useWaveSurferHotkeys, useTimeFormatter, useRegionColors } from "@waveformviewer/hooks";
 import RegionsPlugin from "wavesurfer.js/dist/plugins/regions.js";
 import { KeyboardShortcuts } from "@waveformviewer/KeyboardShortcuts";
+import WaveSurfer from 'wavesurfer.js';
+import { waveSurferAtom } from "./atoms/wavesurfer";
 // can't use tailwind for the waveform view styles as it's got all sorts of specialized nested elements
 import "@waveformviewer/styles.css";
+import { useAtom } from 'jotai';
 interface AudioControlsProps {
     skipBackward: () => void;
     isPlaying: boolean;
@@ -66,53 +69,43 @@ const WaveformViewerComponent: React.FC<WavesurferViewerProps> = ({
     const waveformRef = useRef<HTMLDivElement>(null);
     const [loopRegions, setLoopRegions] = useState(false);
     const colors = useRegionColors(regions, regionColormap);
-    const [regionsPlugin, setRegionsPlugin] = useState<RegionsPlugin | null>(null);
+    const [waveform, setWaveform] = useAtom(waveSurferAtom);
+    // const {
+    //     waveform,
+    //     currentTime,
+    //     duration,
+    //     isPlaying,
+    //     play,
+    //     pause,
+    //     skipForward,
+    //     skipBackward,
+    //     setZoom,
+    //     isLoading
+    // } = useWaveSurfer({
+    //     containerRef: waveformRef as React.RefObject<HTMLDivElement>,
+    //     audioSrc,
+    //     waveOptions,
+    //     showSpectrogram,
+    //     showMinimap,
+    //     onReady
+    // });
 
-    const {
-        waveform,
-        currentTime,
-        duration,
-        isPlaying,
-        play,
-        pause,
-        skipForward,
-        skipBackward,
-        setZoom,
-        isLoading
-    } = useWaveSurfer({
-        containerRef: waveformRef as React.RefObject<HTMLDivElement>,
-        audioSrc,
-        waveOptions,
-        showSpectrogram,
-        showMinimap,
-        onReady
-    });
-
-
-    // Get and store the RegionsPlugin instance from waveform
-    useEffect(() => {
-        if (waveform) {
-            // Wait until waveform is fully initialized
-            setTimeout(() => {
-                const plugins = waveform.getActivePlugins();
-                const regions = plugins.find(plugin => plugin instanceof RegionsPlugin) as RegionsPlugin | undefined;
-                setRegionsPlugin(regions || null);
-            }, 100);
-        } else {
-            setRegionsPlugin(null);
-        }
-    }, [waveform]);
-
+    const regionsResult = useRegions(waveform, regions, colors, loopRegions, onRegionsChange);
     const {
         getTargetRegion,
         setActiveRegion,
         reportRegionsToParent,
         updateRegionBoundary,
-    } = useRegions(regionsPlugin, regions, colors, loopRegions, onRegionsChange);
+    } = regionsResult || {
+        getTargetRegion: () => undefined,
+        setActiveRegion: () => { },
+        reportRegionsToParent: () => { },
+        updateRegionBoundary: () => { },
+        regionColors: [],
+    };
 
     useWaveSurferHotkeys(
         waveform,
-        regionsPlugin,
         getTargetRegion,
         updateRegionBoundary,
         setActiveRegion,

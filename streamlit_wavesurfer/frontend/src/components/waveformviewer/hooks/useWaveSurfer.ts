@@ -1,12 +1,12 @@
-import { useRef, useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import WaveSurfer from "wavesurfer.js";
 import RegionsPlugin from "wavesurfer.js/dist/plugins/regions.js";
-import SpectrogramPlugin from "wavesurfer.js/dist/plugins/spectrogram";
-import TimelinePlugin from "wavesurfer.js/dist/plugins/timeline";
-import ZoomPlugin from "wavesurfer.js/dist/plugins/zoom";
 import { WaveSurferUserOptions } from "@waveformviewer/types";
-import MinimapPlugin from "wavesurfer.js/dist/plugins/minimap";
+import { useAtom, useSetAtom, useAtomValue } from "jotai";
+import { pluginsAtom, registerPlugins, DEFAULT_PLUGINS } from "../atoms/plugins";
+import { waveSurferAtom } from "../atoms/wavesurfer";
+
 async function fetchAudioData(audioSrc: string): Promise<Blob> {
     const response = await fetch(audioSrc);
     if (!response.ok) throw new Error(`Failed to fetch audio: ${response.statusText}`);
@@ -17,8 +17,6 @@ export const useWaveSurfer = ({
     containerRef,
     audioSrc,
     waveOptions,
-    showSpectrogram,
-    showMinimap,
     onReady,
 }: {
     containerRef: React.RefObject<HTMLDivElement>;
@@ -28,27 +26,31 @@ export const useWaveSurfer = ({
     showMinimap: boolean;
     onReady: () => void;
 }) => {
-    const waveformRef = useRef<WaveSurfer | null>(null);
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
     const [isPlaying, setIsPlaying] = useState(false);
-    const regionsPluginRef = useRef<RegionsPlugin | null>(null);
+    const [plugins] = useAtom(pluginsAtom);
+    const regionsPluginRef = (useAtomValue(waveSurferAtom) && (useAtomValue(waveSurferAtom) as any).getPlugin)
+        ? (useAtomValue(waveSurferAtom) as any).getPlugin("regions")
+        : null;
     const { data: audioBlob, isSuccess, isLoading } = useQuery({
         queryKey: ['audioData', audioSrc],
         queryFn: () => fetchAudioData(audioSrc),
         staleTime: Infinity,
     });
-    // update waveOptions when changes are received from the parent
+    const setWaveSurfer = useSetAtom(setWaveSurferAtom);
+    const waveSurfer = useAtomValue(waveSurferAtom);
+
     useEffect(() => {
-        if (waveOptions) {
-            waveformRef.current?.setOptions(waveOptions);
+        if (waveOptions && waveSurfer) {
+            waveSurfer.setOptions(waveOptions);
         }
-    }, [waveOptions]);
+    }, [waveOptions, waveSurfer]);
 
     const createWavesurfer = useCallback(() => {
         if (!containerRef.current || !audioBlob) return;
 
-        waveformRef.current?.destroy();
+        waveSurfer?.destroy();
 
         const ws = WaveSurfer.create({
             container: containerRef.current,
@@ -56,27 +58,10 @@ export const useWaveSurfer = ({
             minPxPerSec: 10,
             ...waveOptions,
         });
+        console.log("created wavesurfer", ws);
 
-        const regionsPlugin = ws.registerPlugin(RegionsPlugin.create());
-        regionsPluginRef.current = regionsPlugin;
-        ws.registerPlugin(TimelinePlugin.create({ height: 10 }));
-        ws.registerPlugin(ZoomPlugin.create({ exponentialZooming: true, iterations: 100 }));
-
-        if (showSpectrogram) {
-            ws.registerPlugin(SpectrogramPlugin.create({
-                labels: true,
-                height: 200,
-                frequencyMax: 8000,
-                frequencyMin: 0,
-                labelsColor: "transparent",
-                fftSamples: 512,
-                scale: "mel",
-            }));
-        }
-
-        if (showMinimap) {
-            ws.registerPlugin(MinimapPlugin.create({}));
-        }
+        // Register all plugins from the atom (or use defaults)
+        registerPlugins(plugins.length ? plugins : DEFAULT_PLUGINS, ws);
 
         ws.on("ready", () => {
             setDuration(ws.getDuration());
@@ -88,29 +73,28 @@ export const useWaveSurfer = ({
         ws.on("finish", () => setIsPlaying(false));
 
         ws.loadBlob(audioBlob);
-        waveformRef.current = ws;
-    }, [audioBlob, containerRef, showSpectrogram, waveOptions, onReady]);
+        setWaveSurfer(ws);
+    }, [audioBlob, containerRef, waveOptions, onReady, plugins, setWaveSurfer, waveSurfer]);
 
     useEffect(() => {
         if (isSuccess) createWavesurfer();
         return () => {
-            waveformRef.current?.destroy();
-            waveformRef.current = null;
+            destroyWaveSurfer(waveSurfer, setWaveSurfer);
         };
-    }, [audioBlob, isSuccess]);
+    }, [audioBlob, isSuccess, createWavesurfer]);
 
     return {
-        waveform: waveformRef.current,
+        waveform: waveSurfer,
         currentTime,
         duration,
         isPlaying,
-        regionsPlugin: regionsPluginRef.current,
-        play: () => waveformRef.current?.play(),
-        pause: () => waveformRef.current?.pause(),
-        skipForward: () => waveformRef.current?.skip(5),
-        skipBackward: () => waveformRef.current?.skip(-5),
-        seekTo: (position: number) => waveformRef.current?.seekTo(position),
-        setZoom: (level: number) => waveformRef.current?.zoom(level),
+        regionsPlugin: regionsPluginRef,
+        play: () => waveSurfer?.play(),
+        pause: () => waveSurfer?.pause(),
+        skipForward: () => waveSurfer?.skip(5),
+        skipBackward: () => waveSurfer?.skip(-5),
+        seekTo: (position: number) => waveSurfer?.seekTo(position),
+        setZoom: (level: number) => waveSurfer?.zoom(level),
         isLoading: Boolean(isLoading),
     };
 };

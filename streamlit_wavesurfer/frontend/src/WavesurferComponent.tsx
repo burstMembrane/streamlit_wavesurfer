@@ -51,7 +51,6 @@ const WavesurferComponent = ({ args }: WavesurferComponentProps) => {
             ts,
         });
     };
-
     const wavesurfer = (
         <WavesurferViewer
             audioSrc={audioSrc}

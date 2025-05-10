@@ -12,6 +12,7 @@
     "@types/react-dom": "^19.1.2",
     "@vitejs/plugin-react": "^4.4.1",
     "chart.js": "^4.4.1",
+    "jotai": "^2.12.4",
     "lucide-react": "^0.488.0",
     "react": "^19.1.0",
     "react-chartjs-2": "^5.2.0",

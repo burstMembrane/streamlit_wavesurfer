@@ -252,7 +252,7 @@ def wavesurfer(
 
     component_value = _component_func(
         audio_src=audio_url,
-        regions=None,
+        regions=regions.to_dict() if regions else None,
         key=key,
         default=0,
         wave_options=wave_options.to_dict(),
@@ -298,7 +298,6 @@ if not _RELEASE:
     cols = st.columns(2)
     with cols[0]:
         wavecolor_selection = st.color_picker("Select a wave color", value="#4f4f4f")
-
     with cols[1]:
         progresscolor_selection = st.color_picker(
             "Select a progress color", value="#3F51B5"
