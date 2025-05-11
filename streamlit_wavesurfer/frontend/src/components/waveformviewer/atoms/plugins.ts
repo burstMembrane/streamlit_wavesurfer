@@ -106,6 +106,7 @@ export function registerPlugin(plugin: WaveSurferPluginConfiguration, wavesurfer
 }
 
 export function unregisterPlugin(plugin: WaveSurferPluginConfiguration, wavesurfer: any) {
+    console.log("unregistering plugin", plugin.name);
     wavesurfer.destroyPlugin(plugin.name);
 }
 export function updatePluginOptions(plugin: WaveSurferPluginConfiguration, wavesurfer: any) {

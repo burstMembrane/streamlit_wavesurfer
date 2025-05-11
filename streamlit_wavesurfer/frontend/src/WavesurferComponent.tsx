@@ -6,7 +6,7 @@ import { useEffect, useState } from "react"
 import { WavesurferViewer } from "@/components/waveformviewer/WaveformViewer"
 import { Region } from "@/components/waveformviewer/types"
 import { WaveSurferUserOptions } from "@/components/waveformviewer/types"
-
+import { Suspense } from "react"
 export interface WavesurferComponentProps {
     args: {
         regions: Array<{
@@ -52,26 +52,28 @@ const WavesurferComponent = ({ args }: WavesurferComponentProps) => {
         });
     };
     const wavesurfer = (
-        <WavesurferViewer
-            audioSrc={audioSrc}
-            regions={regions}
-            waveOptions={waveOptions}
-            onReady={() => {
+        <Suspense fallback={<div>Loading...</div>}>
+            <WavesurferViewer
+                audioSrc={audioSrc}
+                regions={regions}
+                waveOptions={waveOptions}
+                onReady={() => {
 
-                if (!ready) {
-                    setReady(true);
-                    setTimeout(() => Streamlit.setComponentValue({
-                        ready: true,
-                        regions: regions
-                    }), 300);
-                }
-            }}
-            onRegionsChange={onRegionsChange}
-            regionColormap={args.region_colormap}
-            showSpectrogram={args.spectrogram}
-            showMinimap={args.minimap}
-            showControls={args.controls}
-        />
+                    if (!ready) {
+                        setReady(true);
+                        setTimeout(() => Streamlit.setComponentValue({
+                            ready: true,
+                            regions: regions
+                        }), 300);
+                    }
+                }}
+                onRegionsChange={onRegionsChange}
+                regionColormap={args.region_colormap}
+                showSpectrogram={args.spectrogram}
+                showMinimap={args.minimap}
+                showControls={args.controls}
+            />
+        </Suspense>
     );
 
     return (

@@ -69,28 +69,27 @@ const WaveformViewerComponent: React.FC<WavesurferViewerProps> = ({
     const waveformRef = useRef<HTMLDivElement>(null);
     const [loopRegions, setLoopRegions] = useState(false);
     const colors = useRegionColors(regions, regionColormap);
-    const [waveform, setWaveform] = useAtom(waveSurferAtom);
-    // const {
-    //     waveform,
-    //     currentTime,
-    //     duration,
-    //     isPlaying,
-    //     play,
-    //     pause,
-    //     skipForward,
-    //     skipBackward,
-    //     setZoom,
-    //     isLoading
-    // } = useWaveSurfer({
-    //     containerRef: waveformRef as React.RefObject<HTMLDivElement>,
-    //     audioSrc,
-    //     waveOptions,
-    //     showSpectrogram,
-    //     showMinimap,
-    //     onReady
-    // });
+    const {
+        waveform,
+        currentTime,
+        duration,
+        isPlaying,
+        play,
+        pause,
+        skipForward,
+        skipBackward,
+        setZoom,
+        isLoading
+    } = useWaveSurfer({
+        containerRef: waveformRef as React.RefObject<HTMLDivElement>,
+        audioSrc,
+        waveOptions,
+        showSpectrogram,
+        showMinimap,
+        onReady
+    });
 
-    const regionsResult = useRegions(waveform, regions, colors, loopRegions, onRegionsChange);
+    const regionsResult = useRegions(regions, colors, loopRegions, onRegionsChange);
     const {
         getTargetRegion,
         setActiveRegion,
@@ -105,7 +104,6 @@ const WaveformViewerComponent: React.FC<WavesurferViewerProps> = ({
     };
 
     useWaveSurferHotkeys(
-        waveform,
         getTargetRegion,
         updateRegionBoundary,
         setActiveRegion,
@@ -132,7 +130,7 @@ const WaveformViewerComponent: React.FC<WavesurferViewerProps> = ({
                 id="waveform"
                 className="w-full min-h-[200px] mb-4" />
             <div className="flex justify-between items-center gap-2">
-                <AudioControls
+                {/* <AudioControls
                     skipBackward={skipBackward}
                     isPlaying={isPlaying}
                     pause={pause}
@@ -140,7 +138,7 @@ const WaveformViewerComponent: React.FC<WavesurferViewerProps> = ({
                     skipForward={skipForward}
                     currentTime={currentTime}
                     duration={duration}
-                />
+                /> */}
                 <div className="flex items-center gap-4">
                     <button
                         onClick={reportRegionsToParent}
