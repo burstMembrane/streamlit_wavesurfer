@@ -2,22 +2,22 @@ import RegionsPlugin from "wavesurfer.js/dist/plugins/regions";
 import type WaveSurfer from "wavesurfer.js";
 import { useRef, useEffect, useState, useCallback } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
-import { useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom, useAtom } from "jotai";
 import { getPluginByNameAtom } from "../atoms/plugins";
 import { waveSurferAtom } from "../atoms/wavesurfer";
+import { activeRegionAtom, loopRegionsAtom, setLoopRegionAtom } from "../atoms/regions";
 export const useWaveSurferHotkeys = (
-    getTargetRegion: () => any,
     updateRegionBoundary: (targetRegion: any, options: any) => void,
-    setActiveRegion: (region: any) => void,
-    setLoopRegion: (state: boolean | ((prev: boolean) => boolean)) => void,
 ) => {
-    const [isLooping, setIsLooping] = useState(false);
-    const [hotkeysEnabled, setHotkeysEnabled] = useState(false);
-    const editHistory = useRef<Array<{ region: any, prevStart: number, prevEnd: number }>>([]);
-    const containerRef = useRef<HTMLElement | null>(null);
+    // Use atoms for active region and loop region
+    const [activeRegion, setActiveRegion] = useAtom(activeRegionAtom);
+    const [loopRegion, setLoopRegion] = useAtom(loopRegionsAtom);
     const getPluginByName = useAtomValue(getPluginByNameAtom);
     const regionsPlugin = getPluginByName("regions");
     const { instance: waveform, ready: waveformReady } = useAtomValue(waveSurferAtom);
+    const [hotkeysEnabled, setHotkeysEnabled] = useState(false);
+    const editHistory = useRef<Array<{ region: any, prevStart: number, prevEnd: number }>>([]);
+    const containerRef = useRef<HTMLElement | null>(null);
     if (!regionsPlugin) return;
     // Manage hotkeys setup
     const setupHotkeys = useCallback(() => {
@@ -123,9 +123,8 @@ export const useWaveSurferHotkeys = (
     }
 
     const stopLoopingIfNeeded = () => {
-        if (isLooping) {
+        if (loopRegion) {
             setLoopRegion(false);
-            setIsLooping(false);
         }
     };
 
@@ -173,10 +172,9 @@ export const useWaveSurferHotkeys = (
 
     // Navigate to previous region
     useHotkeys('up', (e) => {
-        let wasLooping = isLooping;
+        let wasLooping = loopRegion;
         if (wasLooping) {
             setLoopRegion(false);
-            setIsLooping(false);
         }
         e.preventDefault();
         if (!waveform || !waveformReady) return;
@@ -206,10 +204,10 @@ export const useWaveSurferHotkeys = (
         if (!prevTargetRegion) return;
         // Seek to region start
         waveform.seekTo(prevTargetRegion.start / waveform.getDuration());
-        // Set as active region
-        setActiveRegion(prevTargetRegion);
+        // Set as active region, ensuring content is a string
+        setActiveRegion({ ...prevTargetRegion, content: typeof prevTargetRegion.content === 'string' ? prevTargetRegion.content : String(prevTargetRegion.content ?? '') });
         if (wasLooping) {
-            setIsLooping(true);
+            setLoopRegion(true);
         }
     }, { preventDefault: true, enabled: hotkeysEnabled });
 
@@ -241,8 +239,8 @@ export const useWaveSurferHotkeys = (
         if (!nextTargetRegion) return;
         // Seek to region start
         waveform.seekTo(nextTargetRegion.start / waveform.getDuration());
-        // Set as active region
-        setActiveRegion(nextTargetRegion);
+        // Set as active region, ensuring content is a string
+        setActiveRegion({ ...nextTargetRegion, content: typeof nextTargetRegion.content === 'string' ? nextTargetRegion.content : String(nextTargetRegion.content ?? '') });
     }, { preventDefault: true, enabled: hotkeysEnabled });
 
     // Set region start (i key)
@@ -250,11 +248,10 @@ export const useWaveSurferHotkeys = (
         e.preventDefault();
         if (!waveform || !waveformReady) return;
         const currentTime = waveform.getCurrentTime();
-        const targetRegion = getTargetRegion();
-        if (targetRegion) {
-            handleRegionEdit(targetRegion, currentTime, targetRegion.end);
+        if (activeRegion) {
+            handleRegionEdit(activeRegion, currentTime, activeRegion.end);
             // Ensure this becomes the active region
-            setActiveRegion(targetRegion);
+            setActiveRegion(activeRegion);
         }
     }, { preventDefault: true, enabled: hotkeysEnabled });
 
@@ -263,11 +260,10 @@ export const useWaveSurferHotkeys = (
         e.preventDefault();
         if (!waveform || !waveformReady) return;
         const currentTime = waveform.getCurrentTime();
-        const targetRegion = getTargetRegion();
-        if (targetRegion) {
-            handleRegionEdit(targetRegion, targetRegion.start, currentTime);
+        if (activeRegion) {
+            handleRegionEdit(activeRegion, activeRegion.start, currentTime);
             // Ensure this becomes the active region
-            setActiveRegion(targetRegion);
+            setActiveRegion(activeRegion);
         }
     }, { preventDefault: true, enabled: hotkeysEnabled });
 
@@ -276,10 +272,9 @@ export const useWaveSurferHotkeys = (
         stopLoopingIfNeeded();
         e.preventDefault();
         if (!waveform || !waveformReady) return;
-        const targetRegion = getTargetRegion();
-        if (targetRegion) {
-            setActiveRegion(targetRegion);
-            waveform.seekTo(targetRegion.start / waveform.getDuration());
+        if (activeRegion) {
+            setActiveRegion(activeRegion);
+            waveform.seekTo(activeRegion.start / waveform.getDuration());
             if (!waveform.isPlaying()) {
                 waveform.play();
             }
@@ -291,10 +286,9 @@ export const useWaveSurferHotkeys = (
         stopLoopingIfNeeded();
         e.preventDefault();
         if (!waveform || !waveformReady) return;
-        const targetRegion = getTargetRegion();
-        if (targetRegion) {
-            setActiveRegion(targetRegion);
-            waveform.seekTo(targetRegion.end / waveform.getDuration());
+        if (activeRegion) {
+            setActiveRegion(activeRegion);
+            waveform.seekTo(activeRegion.end / waveform.getDuration());
             if (!waveform.isPlaying()) {
                 waveform.play();
             }
@@ -312,7 +306,6 @@ export const useWaveSurferHotkeys = (
     // Toggle loop for current region (l key)
     useHotkeys('l', (e) => {
         e.preventDefault();
-        setIsLooping(prev => !prev);
         setLoopRegion(prev => !prev);
     }, { preventDefault: true, enabled: hotkeysEnabled });
 

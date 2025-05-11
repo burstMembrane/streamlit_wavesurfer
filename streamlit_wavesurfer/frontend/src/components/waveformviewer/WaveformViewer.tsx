@@ -1,14 +1,12 @@
 import React, { useRef, useState, memo, useEffect } from 'react';
 import { Play, Pause, SkipBack, SkipForward, Save } from 'lucide-react';
-import { WavesurferViewerProps } from "@waveformviewer/types";
-import { useRegions, useWaveSurfer, useWaveSurferHotkeys, useTimeFormatter, useRegionColors } from "@waveformviewer/hooks";
-import RegionsPlugin from "wavesurfer.js/dist/plugins/regions.js";
+import { Region, WavesurferViewerProps } from "@waveformviewer/types";
+import { useRegions, useWaveSurfer, useWaveSurferHotkeys, useTimeFormatter } from "@waveformviewer/hooks";
 import { KeyboardShortcuts } from "@waveformviewer/KeyboardShortcuts";
-import WaveSurfer from 'wavesurfer.js';
 import { waveSurferAtom } from "./atoms/wavesurfer";
 // can't use tailwind for the waveform view styles as it's got all sorts of specialized nested elements
 import "@waveformviewer/styles.css";
-import { useAtom } from 'jotai';
+import { useAtom, useAtomValue } from 'jotai';
 interface AudioControlsProps {
     skipBackward: () => void;
     isPlaying: boolean;
@@ -55,20 +53,56 @@ const AudioControls = ({ skipBackward, isPlaying, pause, play, skipForward, curr
         </div>
     )
 }
+type RegionDisplayProps = {
+    loopRegions: boolean;
+    setLoopRegions: (loopRegions: boolean) => void;
+    onRegionsChange: (regions: Region[]) => void;
+    setZoom: (zoom: number) => void;
+}
+const RegionDisplay = ({ loopRegions, setLoopRegions, onRegionsChange, setZoom }: RegionDisplayProps) => {
+    const {
+        reportRegionsToParent,
+        updateRegionBoundary,
+    } = useRegions(loopRegions, onRegionsChange);
+
+    useWaveSurferHotkeys(updateRegionBoundary);
+
+    return (
+        <div className="flex justify-between items-center gap-2">
+            <button
+                onClick={reportRegionsToParent}
+                className="bg-gray-800 border-none border-radius-4px cursor-pointer p-2 flex items-center justify-center text-white"
+            >
+                <Save size={16} className="mr-2" />
+                Save Regions
+            </button>
+            <div className="flex items-center gap-4 min-w-[200px]">
+                <span>Zoom</span>
+                <input
+                    type="range"
+                    min={1}
+                    max={350}
+                    defaultValue={100}
+                    onChange={(e) => setZoom(Number(e.target.value))}
+                    className="w-24 flex-1"
+                />
+                <KeyboardShortcuts showAll />
+            </div>
+        </div>
+    );
+};
+
 const WaveformViewerComponent: React.FC<WavesurferViewerProps> = ({
     audioSrc,
-    regions = [],
     onReady,
     waveOptions,
     onRegionsChange,
-    regionColormap,
     showSpectrogram,
     showMinimap,
     showControls
 }) => {
     const waveformRef = useRef<HTMLDivElement>(null);
     const [loopRegions, setLoopRegions] = useState(false);
-    const colors = useRegionColors(regions, regionColormap);
     const {
         waveform,
         currentTime,
@@ -89,39 +123,10 @@ const WaveformViewerComponent: React.FC<WavesurferViewerProps> = ({
         onReady
     });
 
-    const regionsResult = useRegions(regions, colors, loopRegions, onRegionsChange);
-    const {
-        getTargetRegion,
-        setActiveRegion,
-        reportRegionsToParent,
-        updateRegionBoundary,
-    } = regionsResult || {
-        getTargetRegion: () => undefined,
-        setActiveRegion: () => { },
-        reportRegionsToParent: () => { },
-        updateRegionBoundary: () => { },
-        regionColors: [],
-    };
-
-    useWaveSurferHotkeys(
-        getTargetRegion,
-        updateRegionBoundary,
-        setActiveRegion,
-        setLoopRegions,
-    );
+    const { ready: waveformReady } = useAtomValue(waveSurferAtom);
 
     if (isLoading) {
         return <div>Loading...</div>;
-    }
-
-    if (!showControls) {
-        return (
-            <div className="flex flex-col gap-4 p-4 w-full box-border">
-                <div ref={waveformRef}
-                    id="waveform"
-                    className="w-full min-h-[200px] mb-4" />
-            </div>
-        )
     }
 
     return (
@@ -129,44 +134,26 @@ const WaveformViewerComponent: React.FC<WavesurferViewerProps> = ({
             <div ref={waveformRef}
                 id="waveform"
                 className="w-full min-h-[200px] mb-4" />
-            <div className="flex justify-between items-center gap-2">
-                {/* <AudioControls
-                    skipBackward={skipBackward}
-                    isPlaying={isPlaying}
-                    pause={pause}
-                    play={play}
-                    skipForward={skipForward}
-                    currentTime={currentTime}
-                    duration={duration}
-                /> */}
-                <div className="flex items-center gap-4">
-                    <button
-                        onClick={reportRegionsToParent}
-                        className="bg-gray-800 border-none border-radius-4px cursor-pointer p-2 flex items-center justify-center text-white"
-                    >
-                        <Save size={16} className="mr-2" />
-                        Save Regions
-                    </button>
-                    <div className="flex items-center gap-4 min-w-[200px]">
-                        <span>Zoom</span>
-                        <input
-                            type="range"
-                            min={1}
-                            max={350}
-                            value={100}
-                            onChange={(e) => {
-                                const value = Number(e.target.value);
-                                setZoom(value);
-                            }}
-                            className="w-24 flex-1"
-                        />
-                        <KeyboardShortcuts showAll={regions && regions.length > 0} />
-                    </div>
-                </div>
-            </div>
+            {/* audio controls */}
+            <AudioControls
+                currentTime={currentTime}
+                duration={duration}
+                isPlaying={isPlaying}
+                pause={pause}
+                play={play}
+                skipForward={skipForward}
+                skipBackward={skipBackward}
+            />
+            {waveformReady && (
+                <RegionDisplay
+                    loopRegions={loopRegions}
+                    setLoopRegions={setLoopRegions}
+                    onRegionsChange={onRegionsChange}
+                    setZoom={setZoom}
+                />
+            )}
         </div>
     );
 };
 
 export const WavesurferViewer = memo(WaveformViewerComponent);
-

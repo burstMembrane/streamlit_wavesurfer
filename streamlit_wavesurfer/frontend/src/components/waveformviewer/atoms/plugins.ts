@@ -4,8 +4,10 @@ import TimelinePlugin, { TimelinePluginOptions } from "wavesurfer.js/dist/plugin
 import ZoomPlugin, { ZoomPluginOptions } from "wavesurfer.js/dist/plugins/zoom.js";
 import HoverPlugin, { HoverPluginOptions } from "wavesurfer.js/dist/plugins/hover.js";
 import MinimapPlugin, { MinimapPluginOptions } from "wavesurfer.js/dist/plugins/minimap.js";
-import { atom } from "jotai";
-
+import { atom, useAtomValue } from "jotai";
+import { WaveSurfer } from "wavesurfer.js";
+// import the wavesurfer atom
+import { waveSurferAtom } from "./wavesurfer";
 
 type PluginOptionsMap = {
     regions: RegionsPluginOptions;
@@ -100,8 +102,12 @@ export function registerPlugin(plugin: WaveSurferPluginConfiguration, wavesurfer
     }
     const options = plugin.options && Object.keys(plugin.options).length > 0 ? plugin.options : undefined;
     const pluginInstance = factory(options as any);
+    // add the name to the plugin instance
+    pluginInstance.name = plugin.name;
     console.log("registering plugin", pluginInstance);
     wavesurfer.registerPlugin(pluginInstance);
+    // set the plugin atom
+
     return pluginInstance;
 }
 
@@ -119,20 +125,17 @@ export function updatePluginOptions(plugin: WaveSurferPluginConfiguration, waves
 export function registerPlugins(plugins: WaveSurferPluginConfiguration[], wavesurfer: any) {
     plugins.forEach(plugin => registerPlugin(plugin, wavesurfer));
 }
-
+export function getPluginInstanceByName<K extends keyof PluginInstanceMap>(name: K): PluginInstanceMap[K] | null {
+    const { instance: waveSurfer } = useAtomValue(waveSurferAtom);
+    if (!waveSurfer) return null;
+    const plugins = waveSurfer.getActivePlugins();
+    const pluginInstance = plugins.find((plugin: any) => plugin.name === name);
+    if (!pluginInstance) return null;
+    return pluginInstance as PluginInstanceMap[K];
+}
 export function unregisterPlugins(plugins: WaveSurferPluginConfiguration[], wavesurfer: any) {
     plugins.forEach(plugin => unregisterPlugin(plugin, wavesurfer));
 }
-
-export function getPluginInstance(plugin: WaveSurferPluginConfiguration, wavesurfer: any) {
-    console.log("getPluginInstance", plugin, wavesurfer);
-    return wavesurfer.getPlugin(plugin.name);
-}
-
-export function getPluginInstances(plugins: WaveSurferPluginConfiguration[], wavesurfer: any) {
-    return plugins.map(plugin => getPluginInstance(plugin, wavesurfer));
-}
-
 // Atom setter for updating global plugin options array
 export const setPluginOptionsAtom = atom(
     null,

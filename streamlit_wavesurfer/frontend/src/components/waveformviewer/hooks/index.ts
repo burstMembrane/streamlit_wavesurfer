@@ -12,19 +12,3 @@ export const useTimeFormatter = () => {
         return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
     }, []);
 };
-
-export const useRegionColors = (regions: Region[], colormapName: string) => {
-    if (!regions) return [];
-    return useMemo(() => {
-        if (regions.length === 0) return [];
-
-        const colorName = colormapName || 'magma';
-
-        return colormap({
-            colormap: colorName,
-            nshades: Math.max(regions.length, 10),
-            format: 'rgbaString',
-            alpha: 0.2
-        });
-    }, [regions.length, colormapName]);
-};

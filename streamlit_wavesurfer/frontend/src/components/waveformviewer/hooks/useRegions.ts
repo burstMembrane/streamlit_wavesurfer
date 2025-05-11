@@ -1,107 +1,80 @@
-import { Region } from "../types";
-import { buildRegionId, lightenColor } from '../utils';
-import { useEffect, useRef, useMemo } from "react";
-import { useAtomValue } from "jotai";
-import { getPluginByNameAtom } from "../atoms/plugins";
+import { useEffect } from "react";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { regionsAtom, activeRegionIdAtom, activeRegionAtom, loopRegionsAtom } from "../atoms/regions";
 import { waveSurferAtom } from "../atoms/wavesurfer";
+import { getPluginInstanceByName } from "../atoms/plugins";
 
 export const useRegions = (
-    regions: Region[] | null,
-    colors: string[],
-    loopRegions: boolean,
-    onRegionsChange?: (regions: Region[]) => void
+    onRegionsChange?: (regions: any[]) => void
 ) => {
-    const activeRegionRef = useRef<any>(null);
-    const loopRegionsRef = useRef(loopRegions);
-    const regionOriginalColorsRef = useRef<Record<string, string>>({});
-    const { instance: waveSurfer, ready: waveformReady } = useAtomValue(waveSurferAtom);
-    const regionsPlugin = useMemo(() => waveformReady && waveSurfer ? (waveSurfer as any).plugins.find((plugin: any) => plugin.regions) : null, [waveformReady, waveSurfer]);
-    loopRegionsRef.current = loopRegions;
-    const regionColors = (regions || []).map((region, index) => {
-        const colorIndex = index % colors.length;
-        const color = region.color || colors[colorIndex] || "rgba(100, 100, 100, 0.5)";
-        return {
-            id: region.id || buildRegionId(region),
-            color,
-            lightenedColor: lightenColor(color),
-        };
-    });
+    const loopRegions = useAtomValue(loopRegionsAtom);
+    const regions = useAtomValue(regionsAtom);
+    const [activeRegion, setActiveRegionState] = useAtom(activeRegionAtom);
+    const { ready: waveformReady } = useAtomValue(waveSurferAtom);
+    // get the regions plugin from the atom
+    const regionsPlugin = getPluginInstanceByName('regions');
 
-    const getTargetRegion = () => activeRegionRef.current;
-    const getCleanContent = (content: any): string => {
-        if (typeof content === 'string') return content.replace(/↻\s*/g, '');
-        if (content && typeof content.textContent === 'string') return content.textContent.replace(/↻\s*/g, '');
-        if (content && content.toString) return content.toString().replace(/↻\s*/g, '');
-        return '';
-    };
+    if (!waveformReady || !regionsPlugin) {
+        throw new Error("useRegions was called before waveform was ready or plugin was available");
+    }
 
     const showLoopingIndicator = () => {
-        if (!activeRegionRef.current || !waveformReady || !regionsPlugin) return;
-        try {
-            const activeRegion = activeRegionRef.current;
-            const isLooping = loopRegionsRef.current;
-            const pluginRegions = regionsPlugin.getRegions();
-            if (!pluginRegions) return;
-            pluginRegions.forEach(region => {
-                if (!region) return;
-                const contentText = getCleanContent(region.content);
-                const displayContent = (isLooping && region.id === activeRegion.id)
-                    ? `↻ ${contentText}`
-                    : contentText;
-                try { region.setOptions({ content: displayContent }); } catch { }
-            });
-        } catch { }
-    };
-
-    const updateActiveRegionColors = (activeReg: any) => {
-        if (!activeReg || !regionColors.length || !waveformReady || !regionsPlugin || !waveSurfer) return;
-        try {
-            const regionId = activeReg.id;
-            if (!regionOriginalColorsRef.current[regionId]) {
-                regionOriginalColorsRef.current[regionId] = activeReg.color;
+        if (!activeRegion) return;
+        const pluginRegions = regionsPlugin.getRegions();
+        if (!pluginRegions) return;
+        pluginRegions.forEach((region: any) => {
+            if (!region) return;
+            // Store the original content if not already stored
+            if (!region._originalContent) {
+                // If content is an HTMLElement, store its innerText, else store as string
+                region._originalContent = typeof region.content === 'string'
+                    ? region.content
+                    : (region.content && region.content.innerText) || '';
             }
-            const originalColor = regionOriginalColorsRef.current[regionId] || activeReg.color;
-            const regionColor = regionColors.find(color => color.id === regionId);
-            const pluginRegions = regionsPlugin.getRegions();
-            if (!pluginRegions) return;
-            pluginRegions.forEach(region => {
-                if (!region) return;
-                if (region.id === regionId) {
-                    region.setOptions({ color: regionColor?.lightenedColor || lightenColor(originalColor) });
-                } else if (regionOriginalColorsRef.current[region.id]) {
-                    const otherColorInfo = regionColors.find(color => color.id === region.id);
-                    region.setOptions({ color: otherColorInfo?.color || regionOriginalColorsRef.current[region.id] });
-                }
-            });
-        } catch { }
+            const contentText = region._originalContent;
+            const displayContent = (loopRegions && region.id === activeRegion.id)
+                ? `↻ ${contentText}`
+                : contentText;
+            if (region.content !== displayContent) {
+                try { region.setOptions({ content: displayContent }); } catch { }
+            }
+        });
+    };
+    const updateActiveRegionColors = (activeReg: any) => {
+        if (!activeReg) return;
+        const regionId = activeReg.id;
+        const regionColor = regions.find(color => color.id === regionId);
+        const pluginRegions = regionsPlugin.getRegions();
+        if (!pluginRegions) return;
+        pluginRegions.forEach((region: any) => {
+            if (!region) return;
+            if (region.id === regionId) {
+                region.setOptions({ color: regionColor?.lightenedColor });
+            } else {
+                const otherColorInfo = regions.find(color => color.id === region.id);
+                region.setOptions({ color: otherColorInfo?.color });
+            }
+        });
     };
 
     const setActiveRegion = (region: any) => {
-        if (!region || !waveformReady || !regionsPlugin) return;
-        activeRegionRef.current = region;
+        if (!region || !region.id) return;
+        setActiveRegionState(region);
         updateActiveRegionColors(region);
-        setTimeout(showLoopingIndicator, 10);
     };
 
     useEffect(() => {
-        if (!waveformReady || !regionsPlugin || !regions || regions.length === 0) return;
-        // check if the regionsPLugin is attached to the waveSurfer
-        if (!waveSurfer?.getActivePlugins().includes(regionsPlugin)) {
-            console.log("regionsPlugin", regionsPlugin);
-            console.log("regionsPlugin is not attached to the waveSurfer");
-        }
 
+        console.log('[useRegions] effect run', { regions, plugin: regionsPlugin });
         regionsPlugin.clearRegions();
-        regions.forEach((region, index) => {
-            if (region.start == null || region.end == null || region.content == null) return;
-            const colorIndex = index % colors.length;
-            const regionId = region.id || buildRegionId(region);
+        regions.forEach((region) => {
+            console.log('[useRegions] adding region', region);
             regionsPlugin.addRegion({
                 start: region.start,
                 end: region.end,
                 content: region.content,
-                id: regionId,
-                color: colors[colorIndex] || `rgba(100, 100, 100, 0.5)`,
+                id: region.id,
+                color: region.color,
                 drag: region.drag,
                 resize: region.resize,
             });
@@ -109,53 +82,62 @@ export const useRegions = (
         const handleRegionIn = (region: any) => setActiveRegion(region);
         const handleRegionClicked = (region: any) => setActiveRegion(region);
         const handleRegionOut = () => {
-            if (loopRegionsRef.current && activeRegionRef.current && typeof activeRegionRef.current.play === 'function') {
-                try { activeRegionRef.current.play(); } catch { }
+            if (loopRegions) {
+                const pluginRegions = regionsPlugin.getRegions();
+                if (pluginRegions && activeRegion) {
+                    const pluginRegion = pluginRegions.find((r: any) => r.id === activeRegion.id);
+                    if (pluginRegion && typeof pluginRegion.play === 'function') {
+                        try { pluginRegion.play(); } catch { }
+                    }
+                }
             }
         };
         regionsPlugin.on('region-in', handleRegionIn);
         regionsPlugin.on('region-clicked', handleRegionClicked);
         regionsPlugin.on('region-out', handleRegionOut);
-        return () => { regionsPlugin.unAll(); };
-    }, [regionsPlugin, regions, colors, waveformReady]);
+        return () => {
+            regionsPlugin.clearRegions();
+            regionsPlugin.unAll();
+        };
+    }, [regions]);
 
-    useEffect(() => { if (waveformReady) showLoopingIndicator(); }, [loopRegions, waveformReady]);
-    useEffect(() => { if (waveformReady) { updateActiveRegionColors(activeRegionRef.current); showLoopingIndicator(); } }, [regionsPlugin, updateActiveRegionColors, showLoopingIndicator, waveformReady]);
+    // Effect: update loop indicator when loopRegions or regionsPlugin changes
+    useEffect(() => {
+        showLoopingIndicator();
+    }, [loopRegions]);
+
+    // Effect: update region colors when activeRegion changes
+    useEffect(() => {
+        updateActiveRegionColors(activeRegion);
+    }, [activeRegion]);
+
     const reportRegionsToParent = () => {
-        if (!onRegionsChange || !regionsPlugin) return;
-        try {
-            const currentRegions = regionsPlugin.getRegions();
-            if (!currentRegions) return;
-            const regionsForParent = currentRegions.map(wsRegion => {
-                const content = getCleanContent(wsRegion.content);
-                return {
-                    id: wsRegion.id,
-                    start: wsRegion.start,
-                    end: wsRegion.end,
-                    content,
-                    color: wsRegion.color,
-                    drag: wsRegion.drag,
-                    resize: wsRegion.resize
-                };
-            });
-            onRegionsChange(regionsForParent);
-        } catch { }
+        if (!onRegionsChange) return;
+        const currentRegions = regionsPlugin.getRegions();
+        if (!currentRegions) return;
+        const regionsForParent = currentRegions.map((wsRegion: any) => ({
+            id: wsRegion.id,
+            start: wsRegion.start,
+            end: wsRegion.end,
+            content: wsRegion.content,
+            color: wsRegion.color,
+            drag: wsRegion.drag,
+            resize: wsRegion.resize
+        }));
+        onRegionsChange(regionsForParent);
     };
+
     const updateRegionBoundary = (targetRegion: any, options: any) => {
-        if (!targetRegion || !waveformReady || !regionsPlugin) return;
-        try {
-            targetRegion.setOptions(options);
-            if (loopRegionsRef.current && activeRegionRef.current) {
-                setTimeout(showLoopingIndicator, 10);
-            }
-        } catch { }
+        if (!targetRegion) return;
+        targetRegion.setOptions(options);
+        if (loopRegions && activeRegion) {
+            setTimeout(showLoopingIndicator, 10);
+        }
     };
+
     return {
-        activeRegion: activeRegionRef.current,
-        setActiveRegion,
-        getTargetRegion,
         reportRegionsToParent,
         updateRegionBoundary,
-        regionColors
+        regionColors: regions.map(r => ({ id: r.id, color: r.color, lightenedColor: r.lightenedColor })),
     };
 };

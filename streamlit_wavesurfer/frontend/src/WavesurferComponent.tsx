@@ -7,6 +7,9 @@ import { WavesurferViewer } from "@/components/waveformviewer/WaveformViewer"
 import { Region } from "@/components/waveformviewer/types"
 import { WaveSurferUserOptions } from "@/components/waveformviewer/types"
 import { Suspense } from "react"
+import { useAtom, useSetAtom } from "jotai"
+import { setRegionsAtom } from "@/components/waveformviewer/atoms/regions"
+
 export interface WavesurferComponentProps {
     args: {
         regions: Array<{
@@ -30,7 +33,12 @@ export interface WavesurferComponentProps {
 const WavesurferComponent = ({ args }: WavesurferComponentProps) => {
     const [ready, setReady] = useState(false);
 
+    const setRegions = useSetAtom(setRegionsAtom);
 
+    useEffect(() => {
+        if (!args.regions) return;
+        setRegions({ regions: args.regions, colormapName: args.region_colormap });
+    }, [args.regions, args.region_colormap]);
 
     useEffect(() => {
         Streamlit.setFrameHeight();
@@ -38,7 +46,6 @@ const WavesurferComponent = ({ args }: WavesurferComponentProps) => {
 
     const waveOptions = args.wave_options;
 
-    const regions = args.regions;
     const audioSrc = args.audio_src;
 
 
@@ -55,7 +62,6 @@ const WavesurferComponent = ({ args }: WavesurferComponentProps) => {
         <Suspense fallback={<div>Loading...</div>}>
             <WavesurferViewer
                 audioSrc={audioSrc}
-                regions={regions}
                 waveOptions={waveOptions}
                 onReady={() => {
 
@@ -63,7 +69,7 @@ const WavesurferComponent = ({ args }: WavesurferComponentProps) => {
                         setReady(true);
                         setTimeout(() => Streamlit.setComponentValue({
                             ready: true,
-                            regions: regions
+                            regions: args.regions
                         }), 300);
                     }
                 }}
