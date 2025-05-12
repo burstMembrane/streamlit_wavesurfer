@@ -47,6 +47,7 @@ export const useWaveSurfer = ({
         });
         setWaveSurfer({ instance: ws, ready: false });
         console.log("created wavesurfer", ws);
+        console.log("plugins", plugins);
         registerPlugins(plugins.length ? plugins : DEFAULT_PLUGINS, ws);
         ws.on("ready", () => {
             setWaveSurfer({ instance: ws, ready: true });

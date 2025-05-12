@@ -5,7 +5,6 @@ import ZoomPlugin, { ZoomPluginOptions } from "wavesurfer.js/dist/plugins/zoom.j
 import HoverPlugin, { HoverPluginOptions } from "wavesurfer.js/dist/plugins/hover.js";
 import MinimapPlugin, { MinimapPluginOptions } from "wavesurfer.js/dist/plugins/minimap.js";
 import { atom, useAtomValue } from "jotai";
-import { WaveSurfer } from "wavesurfer.js";
 // import the wavesurfer atom
 import { waveSurferAtom } from "./wavesurfer";
 
@@ -17,6 +16,10 @@ type PluginOptionsMap = {
     hover: HoverPluginOptions;
     minimap: MinimapPluginOptions;
 };
+export type WaveSurferPluginConfigurationNested = {
+    plugins: WaveSurferPluginConfiguration[];
+}
+export type WaveSurferPluginConfigurationList = WaveSurferPluginConfiguration[]
 
 export interface WaveSurferPluginConfiguration<K extends keyof PluginOptionsMap = keyof PluginOptionsMap> {
     name: K;
@@ -83,6 +86,7 @@ type PluginInstanceMap = {
 export const getPluginByNameAtom = atom(
     (get) => <K extends keyof PluginInstanceMap>(name: K): PluginInstanceMap[K] | undefined => {
         const plugins = get(pluginsAtom);
+
         const config = plugins.find((plugin) => plugin.name === name);
         if (!config) return undefined;
         // Always pass undefined if options is empty
@@ -143,5 +147,8 @@ export const setPluginOptionsAtom = atom(
         set(pluginsAtom, update);
     }
 );
-
+export const isPluginActiveAtom = atom((get) => (pluginName: string) => {
+    const plugins = get(pluginsAtom);
+    return plugins.some(plugin => plugin.name === pluginName);
+});
 

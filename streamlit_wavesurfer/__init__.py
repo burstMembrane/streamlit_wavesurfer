@@ -1,222 +1,30 @@
 __all__ = ["wavesurfer", "Region", "RegionColormap", "WaveSurferOptions"]
 
-import base64
-import io
-from dataclasses import dataclass
-from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional
 
-import numpy as np
-import requests
-import soundfile as sf
+from pathlib import Path
+from typing import List, Literal, Optional
+
 import streamlit as st
 import streamlit.components.v1 as components
-from streamlit import url_util
 
-AudioData = str | bytes | io.BytesIO | np.ndarray | io.FileIO
-
+from streamlit_wavesurfer.utils import (
+    DEFAULT_PLUGINS,
+    AudioData,
+    Colormap,
+    HoverPluginOptions,
+    MinimapPluginOptions,
+    Region,
+    RegionList,
+    RegionsPluginOptions,
+    WaveSurferOptions,
+    WaveSurferPluginConfiguration,
+    WaveSurferPluginConfigurationList,
+    _convert_to_base64,
+)
 
 # When False => run: npm start
 # When True => run: npm run build
 _RELEASE = False
-
-Colormap = Literal[
-    "jet",
-    "hsv",
-    "hot",
-    "cool",
-    "spring",
-    "summer",
-    "autumn",
-    "winter",
-    "bone",
-    "copper",
-    "greys",
-    "YIGnBu",
-    "greens",
-    "YIOrRd",
-    "bluered",
-    "RdBu",
-    "picnic",
-    "rainbow",
-    "portland",
-    "blackbody",
-    "earth",
-    "electric",
-    "magma",
-    "viridis",
-    "inferno",
-    "plasma",
-    "turbo",
-    "cubehelix",
-    "alpha",
-    "bathymetry",
-    "cdom",
-    "chlorophyll",
-    "density",
-]
-
-
-@st.cache_data
-def _convert_to_base64(audio_data: Optional[AudioData]) -> Optional[str]:
-    """Convert different types of audio data to base64 string.
-
-    Parameters:
-    ----------
-    audio_data : Optional[MediaData]
-        Audio data, can be:
-        - File path (str or pathlib.Path)
-        - URL (str)
-        - Raw audio data (bytes, BytesIO)
-        - Numpy array (numpy.ndarray)
-        - File object
-
-    Returns:
-    -------
-    Optional[str]
-        Base64 encoded audio data string or None if conversion fails.
-
-    Raises:
-    ------
-    ValueError
-        If audio data is None.
-    """
-    if audio_data is None:
-        raise ValueError("Audio data cannot be None")
-
-    if isinstance(audio_data, (str, Path)):
-        # If it's a file path.
-        audio_data = str(audio_data)
-        if Path(audio_data).exists():
-            with open(audio_data, "rb") as f:
-                audio_bytes = f.read()
-                audio_base64 = base64.b64encode(audio_bytes).decode()
-                ext = Path(audio_data).suffix.lower()
-                mime_type = {
-                    ".wav": "audio/wav",
-                    ".mp3": "audio/mpeg",
-                    ".ogg": "audio/ogg",
-                }.get(ext, "audio/wav")
-                return f"data:{mime_type};base64,{audio_base64}"
-        elif url_util.is_url(audio_data, allowed_schemas=("http", "https", "data")):
-            # Try to download the audio from the URL.
-            response = requests.get(audio_data)
-            if response.status_code == 200:
-                audio_bytes = response.content
-                audio_base64 = base64.b64encode(audio_bytes).decode()
-                return f"data:audio/wav;base64,{audio_base64}"
-            else:
-                # Fail a error.
-                st.error(f"Failed to download audio from URL: {audio_data}")
-
-        # If the audio already is a base64 string, return it as is.
-        return audio_data
-
-    elif isinstance(audio_data, np.ndarray):
-        # If it's a numpy array, convert it to WAV format.
-        buffer = io.BytesIO()
-        sf.write(buffer, audio_data, samplerate=16000, format="WAV")
-        buffer.seek(0)
-        audio_base64 = base64.b64encode(buffer.read()).decode()
-        return f"data:audio/wav;base64,{audio_base64}"
-
-    elif isinstance(audio_data, (bytes, bytearray)):
-        # If it's a bytes or bytearray object.
-        audio_base64 = base64.b64encode(audio_data).decode()
-        return f"data:audio/wav;base64,{audio_base64}"
-
-    elif isinstance(audio_data, io.BytesIO):
-        # If it's a BytesIO object.
-        audio_data.seek(0)
-        audio_base64 = base64.b64encode(audio_data.read()).decode()
-        return f"data:audio/wav;base64,{audio_base64}"
-
-    elif isinstance(audio_data, (io.RawIOBase, io.BufferedReader)):
-        # If it's a file object.
-        audio_base64 = base64.b64encode(audio_data.read()).decode()
-        # Try to get the MIME type from the file name.
-        if hasattr(audio_data, "name"):
-            ext = Path(audio_data.name).suffix.lower()
-            mime_type = {
-                ".wav": "audio/wav",
-                ".mp3": "audio/mpeg",
-                ".ogg": "audio/ogg",
-                ".m4a": "audio/mp4",
-                ".flac": "audio/flac",
-                ".webm": "audio/webm",
-            }.get(ext, "audio/wav")
-        else:
-            mime_type = "audio/wav"
-        return f"data:{mime_type};base64,{audio_base64}"
-
-    else:
-        st.error(f"Unsupported audio data type: {type(audio_data)}")
-        return None
-
-
-@dataclass
-class Region:
-    start: float
-    end: float
-    content: str = ""
-    color: Optional[str] = None
-    drag: bool = False
-    resize: bool = False
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "start": self.start,
-            "end": self.end,
-            "content": self.content,
-            "color": self.color,
-        }
-
-
-@dataclass
-class RegionList:
-    regions: List[Region]
-
-    def to_dict(self):
-        return [region for region in self.regions]
-
-    def __next__(self):
-        return next(self.regions)
-
-    def __iter__(self):
-        return iter(self.regions)
-
-    def __len__(self):
-        return len(self.regions)
-
-    def __getitem__(self, index):
-        return self.regions[index]
-
-
-@dataclass
-class WaveSurferOptions:
-    waveColor: str = "violet"
-    progressColor: str = "purple"
-    cursorWidth: int = 2
-    minPxPerSec: int = 100
-    fillParent: bool = True
-    interact: bool = True
-    dragToSeek: bool = True
-    autoScroll: bool = True
-    autoCenter: bool = True
-    sampleRate: int = 44100
-    height: int = 240
-    width: int | str = "100%"
-    barWidth: int = 0
-    barGap: int = 0
-    barRadius: int = 2
-    normalize: bool = True
-    hideScrollbar: bool = True
-    showMinimap: bool = False
-
-    def to_dict(self) -> Dict[str, Any]:
-        return self.__dict__
-
-
 if not _RELEASE:
     _component_func = components.declare_component(
         "wavesurfer",
@@ -238,6 +46,9 @@ def wavesurfer(
     show_spectrogram: bool = False,
     show_minimap: bool = False,
     show_controls: bool = True,
+    plugins: Optional[
+        List[Literal["regions", "spectrogram", "timeline", "zoom", "hover", "minimap"]]
+    ] = None,
 ) -> bool:
     """Nice audio/video player with audio track selection support.
 
@@ -247,19 +58,38 @@ def wavesurfer(
     Returns:
      False when not yet initialized (something is loading), and True when ready.
     """
+    if plugins is None:
+        plugins = DEFAULT_PLUGINS
 
-    audio_url = _convert_to_base64(audio_src)
+    # if the plugins is a list, convert it to a WaveSurferPluginConfigurationList
+    if isinstance(plugins, list):
+        # uf we're just a list of plugin names, configer to wave
+        if all(isinstance(plugin, str) for plugin in plugins):
+            plugins = WaveSurferPluginConfigurationList.from_name_list(plugins)
+        else:
+            plugins = WaveSurferPluginConfigurationList(plugins=plugins)
+        # conver to dict
+        plugin_configurations = plugins.to_dict()
+    if wave_options is None:
+        wave_options = WaveSurferOptions().to_dict()
+
+    # if we jsut get  alist of plguin names,
+    # if the wave_options is the dataclass, convert it to a dict
+    if isinstance(wave_options, WaveSurferOptions):
+        wave_options = wave_options.to_dict()
+    audio_url: AudioData = _convert_to_base64(audio_src)
 
     component_value = _component_func(
         audio_src=audio_url,
         regions=regions.to_dict() if regions else None,
         key=key,
         default=0,
-        wave_options=wave_options.to_dict(),
+        wave_options=wave_options,
         region_colormap=region_colormap,
         spectrogram=show_spectrogram,
         minimap=show_minimap,
         controls=show_controls,
+        plugin_configurations=plugin_configurations,
     )
     return component_value
 
@@ -319,6 +149,7 @@ if not _RELEASE:
             fillParent=True,
             height=300,
         ),
+        plugins=["regions", "zoom", "timeline", "minimap"],
         region_colormap=colormap_selection,
         show_spectrogram=False,
         show_minimap=False,

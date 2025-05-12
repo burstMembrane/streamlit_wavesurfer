@@ -2,6 +2,7 @@ import { atom } from 'jotai';
 import { Region } from '../types';
 import { buildRegionId, lightenColor } from '../utils';
 import colormap from 'colormap';
+import type { Region as RegionsPluginRegion } from 'wavesurfer.js/dist/plugins/regions';
 
 // ----------------------
 // Region Types
@@ -14,7 +15,7 @@ export interface ProcessedRegion extends Region {
 }
 
 // Generic augmented region type
-export type AugmentedRegion<T> = T & {
+export type AugmentedRegion<T extends RegionsPluginRegion> = T & {
     id: string;
     color: string;
     lightenedColor: string;
@@ -85,15 +86,26 @@ export const activeRegionAtom = atom<Region | null>(null);
  */
 export const setRegionsAtom = atom(
     null,
-    (get, set, { regions, colormapName }: { regions: Region[]; colormapName: string }) => {
+    (_get, set, { regions, colormapName }: { regions: Region[]; colormapName: string }) => {
         const colors = getRegionColors(regions, colormapName);
         const processed = regions.map((region, index) => {
             return addColor(addId(region), colors[index % colors.length]);
         });
-        set(regionsAtom, processed);
+        console.log("[setRegionsAtom] processed", processed)
+        // make it unique
+        const uniqueProcessed = processed.filter((region, index, self) =>
+            index === self.findIndex((t) => t.id === region.id)
+        );
+        set(regionsAtom, uniqueProcessed);
     }
 );
 
+export const clearRegionsAtom = atom(
+    null,
+    (_get, set) => {
+        set(regionsAtom, []);
+    }
+);
 
 
 /**
@@ -103,7 +115,7 @@ export const loopRegionsAtom = atom<boolean>(false);
 
 export const setLoopRegionAtom = atom(
     null,
-    (get, set, loopRegions: boolean) => {
+    (_get, set, loopRegions: boolean) => {
         set(loopRegionsAtom, loopRegions);
     }
 );
@@ -120,7 +132,7 @@ export const useRegionsAtom = () => atom(
         regions: get(regionsAtom),
         activeRegion: get(activeRegionAtom),
     }),
-    (get, set, action: { type: 'setActiveRegion' | 'setRegions'; payload: any }) => {
+    (_get, set, action: { type: 'setActiveRegion' | 'setRegions'; payload: any }) => {
         switch (action.type) {
             case 'setActiveRegion':
                 set(activeRegionAtom, action.payload);

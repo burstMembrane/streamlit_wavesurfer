@@ -1,25 +1,28 @@
-import RegionsPlugin from "wavesurfer.js/dist/plugins/regions";
-import type WaveSurfer from "wavesurfer.js";
 import { useRef, useEffect, useState, useCallback } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
-import { useAtomValue, useSetAtom, useAtom } from "jotai";
-import { getPluginByNameAtom } from "../atoms/plugins";
-import { waveSurferAtom } from "../atoms/wavesurfer";
-import { activeRegionAtom, loopRegionsAtom, setLoopRegionAtom } from "../atoms/regions";
+import { useAtomValue, useAtom } from "jotai";
+import { getPluginByNameAtom } from "@waveformviewer/atoms/plugins";
+import { waveSurferAtom } from "@waveformviewer/atoms/wavesurfer";
+import { activeRegionAtom, loopRegionsAtom } from "@waveformviewer/atoms/regions";
 export const useWaveSurferHotkeys = (
-    updateRegionBoundary: (targetRegion: any, options: any) => void,
 ) => {
     // Use atoms for active region and loop region
     const [activeRegion, setActiveRegion] = useAtom(activeRegionAtom);
     const [loopRegion, setLoopRegion] = useAtom(loopRegionsAtom);
     const getPluginByName = useAtomValue(getPluginByNameAtom);
     const regionsPlugin = getPluginByName("regions");
-    const { instance: waveform, ready: waveformReady } = useAtomValue(waveSurferAtom);
+
     const [hotkeysEnabled, setHotkeysEnabled] = useState(false);
     const editHistory = useRef<Array<{ region: any, prevStart: number, prevEnd: number }>>([]);
     const containerRef = useRef<HTMLElement | null>(null);
-    if (!regionsPlugin) return;
+    const { instance: waveform, ready: waveformReady } = useAtomValue(waveSurferAtom);
     // Manage hotkeys setup
+
+    const updateRegionBoundary = (activeRegion: any, { start, end }: { start: number, end: number }) => {
+        if (!activeRegion) return;
+        activeRegion.start = start;
+        activeRegion.end = end;
+    }
     const setupHotkeys = useCallback(() => {
         if (!waveform || !waveformReady) return;
 
@@ -177,7 +180,7 @@ export const useWaveSurferHotkeys = (
             setLoopRegion(false);
         }
         e.preventDefault();
-        if (!waveform || !waveformReady) return;
+        if (!waveform || !waveformReady || !regionsPlugin) return;
         const allRegions = regionsPlugin.getRegions().sort((a, b) => a.start - b.start);
         if (allRegions.length === 0) return;
 
@@ -215,7 +218,7 @@ export const useWaveSurferHotkeys = (
     useHotkeys('down', (e) => {
         stopLoopingIfNeeded();
         e.preventDefault();
-        if (!waveform || !waveformReady) return;
+        if (!waveform || !waveformReady || !regionsPlugin) return;
         const allRegions = regionsPlugin.getRegions().sort((a, b) => a.start - b.start);
         if (allRegions.length === 0) return;
 
@@ -246,7 +249,7 @@ export const useWaveSurferHotkeys = (
     // Set region start (i key)
     useHotkeys('i', (e) => {
         e.preventDefault();
-        if (!waveform || !waveformReady) return;
+        if (!waveform || !waveformReady || !regionsPlugin) return;
         const currentTime = waveform.getCurrentTime();
         if (activeRegion) {
             handleRegionEdit(activeRegion, currentTime, activeRegion.end);
@@ -258,7 +261,7 @@ export const useWaveSurferHotkeys = (
     // Set region end (o key)
     useHotkeys('o', (e) => {
         e.preventDefault();
-        if (!waveform || !waveformReady) return;
+        if (!waveform || !waveformReady || !regionsPlugin) return;
         const currentTime = waveform.getCurrentTime();
         if (activeRegion) {
             handleRegionEdit(activeRegion, activeRegion.start, currentTime);
@@ -271,7 +274,7 @@ export const useWaveSurferHotkeys = (
     useHotkeys('s', (e) => {
         stopLoopingIfNeeded();
         e.preventDefault();
-        if (!waveform || !waveformReady) return;
+        if (!waveform || !waveformReady || !regionsPlugin) return;
         if (activeRegion) {
             setActiveRegion(activeRegion);
             waveform.seekTo(activeRegion.start / waveform.getDuration());
