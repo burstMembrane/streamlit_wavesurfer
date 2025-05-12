@@ -34,12 +34,11 @@ const WaveformViewerComponent: React.FC<WavesurferViewerProps> = ({
     audioSrc,
     onReady,
     waveOptions,
-    showSpectrogram,
-    showMinimap }) => {
+    showControls
+}) => {
     const waveformRef = useRef<HTMLDivElement>(null);
     const isPluginActive = useAtomValue(isPluginActiveAtom);
     const isRegionPluginActive = isPluginActive("regions");
-
 
     const {
         currentTime,
@@ -52,8 +51,6 @@ const WaveformViewerComponent: React.FC<WavesurferViewerProps> = ({
             containerRef: waveformRef as React.RefObject<HTMLDivElement>,
             audioSrc,
             waveOptions,
-            showSpectrogram,
-            showMinimap,
             onReady
         });
 
@@ -68,7 +65,7 @@ const WaveformViewerComponent: React.FC<WavesurferViewerProps> = ({
                 id="waveform"
                 className="w-full min-h-[200px] mb-4" />
             {/* audio controls */}
-            <AudioControls
+            {showControls && <AudioControls
                 currentTime={currentTime}
                 duration={duration}
                 isPlaying={isPlaying}
@@ -77,9 +74,7 @@ const WaveformViewerComponent: React.FC<WavesurferViewerProps> = ({
                 skipForward={skipForward}
                 skipBackward={skipBackward}
             />
-            <div className="flex items-center gap-4 min-w-[200px]">
-                <KeyboardShortcuts showAll />
-            </div>
+            }
             {waveformReady && isRegionPluginActive && (
                 <RegionDisplay
                 />

@@ -27,8 +27,7 @@ export interface WavesurferComponentProps {
         wave_options: WaveSurferUserOptions;
         plugin_configurations: WaveSurferPluginConfigurationNested;
         region_colormap: string;
-        spectrogram: boolean;
-        minimap: boolean;
+
         controls: boolean;
     };
 }
@@ -89,8 +88,6 @@ const WavesurferComponent = ({ args }: WavesurferComponentProps) => {
                     }
                 }}
                 regionColormap={args.region_colormap}
-                showSpectrogram={args.spectrogram}
-                showMinimap={args.minimap}
                 showControls={args.controls}
             />
         </Suspense>

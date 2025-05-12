@@ -22,8 +22,7 @@ export const useWaveSurfer = ({
     containerRef: React.RefObject<HTMLDivElement>;
     audioSrc: string;
     waveOptions: WaveSurferUserOptions;
-    showSpectrogram: boolean;
-    showMinimap: boolean;
+
     onReady: () => void;
 }) => {
     const [currentTime, setCurrentTime] = useState(0);

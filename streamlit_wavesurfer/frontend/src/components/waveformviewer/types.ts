@@ -29,8 +29,6 @@ export interface WavesurferViewerProps {
     onReady: () => void;
     onRegionsChange?: (regions: Region[]) => void;
     regionColormap: string;
-    showSpectrogram: boolean;
-    showMinimap: boolean;
     showControls: boolean;
 }
 

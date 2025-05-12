@@ -11,13 +11,9 @@ from streamlit_wavesurfer.utils import (
     DEFAULT_PLUGINS,
     AudioData,
     Colormap,
-    HoverPluginOptions,
-    MinimapPluginOptions,
     Region,
     RegionList,
-    RegionsPluginOptions,
     WaveSurferOptions,
-    WaveSurferPluginConfiguration,
     WaveSurferPluginConfigurationList,
     _convert_to_base64,
 )
@@ -86,8 +82,6 @@ def wavesurfer(
         default=0,
         wave_options=wave_options,
         region_colormap=region_colormap,
-        spectrogram=show_spectrogram,
-        minimap=show_minimap,
         controls=show_controls,
         plugin_configurations=plugin_configurations,
     )
@@ -123,11 +117,11 @@ if not _RELEASE:
     colormap_selection = st.selectbox(
         "Select a colormap",
         colormap_options,
-        index=colormap_options.index("magma"),
+        index=colormap_options.index("cool"),
     )
     cols = st.columns(2)
     with cols[0]:
-        wavecolor_selection = st.color_picker("Select a wave color", value="#4f4f4f")
+        wavecolor_selection = st.color_picker("Select a wave color", value="#cccccc")
     with cols[1]:
         progresscolor_selection = st.color_picker(
             "Select a progress color", value="#3F51B5"
@@ -149,10 +143,11 @@ if not _RELEASE:
             fillParent=True,
             height=300,
         ),
-        plugins=["regions", "zoom", "timeline", "minimap"],
+        plugins=[
+            "zoom",
+            "timeline",
+        ],
         region_colormap=colormap_selection,
-        show_spectrogram=False,
-        show_minimap=False,
         show_controls=False,
     )
 
