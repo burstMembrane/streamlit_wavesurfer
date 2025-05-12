@@ -1,22 +1,19 @@
 import { useEffect, useState, useCallback } from "react";
-import { useAtom, useSetAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import { regionsAtom, activeRegionAtom, loopRegionsAtom, AugmentedRegion } from "@waveformviewer/atoms/regions";
 import { waveSurferAtom } from "@waveformviewer/atoms/wavesurfer";
 import { getPluginInstanceByName } from "@waveformviewer/atoms/plugins";
 
-export const useRegions = (
-) => {
-    const [loopRegions] = useAtom(loopRegionsAtom);
-    const setLoopRegions = useSetAtom(loopRegionsAtom);
+export const useRegions = () => {
+    const [loopRegions, setLoopRegions] = useAtom(loopRegionsAtom);
     const [activeRegion, setActiveRegionState] = useAtom(activeRegionAtom);
-    const { ready: waveformReady } = useAtom(waveSurferAtom)[0];
+    const { ready: waveformReady } = useAtomValue(waveSurferAtom);
     const regionsPlugin = getPluginInstanceByName('regions');
     const [regions] = useAtom(regionsAtom);
     const [regionsReady, setRegionsReady] = useState(false);
 
     useEffect(() => {
         if (regionsPlugin && waveformReady && regions.length) {
-            console.log("[useRegions] setting internal regions ready");
             setRegionsReady(true);
         }
     }, [regionsPlugin, waveformReady, regions]);
@@ -27,7 +24,6 @@ export const useRegions = (
         if (!pluginRegions) return;
         pluginRegions.forEach((region: AugmentedRegion<any>) => {
             if (!region) return;
-            // Store the original content if not already stored
             if (!region._originalContent) {
                 region._originalContent = region.content;
                 // if the content is a HTMLElement, get the text content
@@ -82,7 +78,6 @@ export const useRegions = (
         });
 
         const handleRegionIn = (region: any) => {
-            console.log("[useRegions] handleRegionIn", region)
             setActiveRegion(region);
         };
         const handleRegionClicked = (region: any) => setActiveRegion(region);
@@ -98,13 +93,10 @@ export const useRegions = (
 
 
     const handleRegionOut = useCallback((region: any) => {
-        console.log("[useRegions] region-out", region);
-        // If the out-going region does not match the active region, disable looping
         if (!activeRegion || region.id !== activeRegion.id) {
             setLoopRegions(false);
             return;
         }
-        // Otherwise, loop as before
         const pluginRegions = regionsPlugin?.getRegions();
         if (loopRegions && pluginRegions && activeRegion) {
             const pluginRegion = pluginRegions.find((r: any) => r.id === activeRegion.id);
@@ -118,22 +110,16 @@ export const useRegions = (
         showLoopingIndicator();
         if (!regionsPlugin) return;
         regionsPlugin.on("region-out", handleRegionOut);
-        // Clean up in case dependencies change
         return () => {
             regionsPlugin.un("region-out", handleRegionOut);
         };
     }, [loopRegions, handleRegionOut, regionsPlugin]);
 
-    // Effect: update region colors when activeRegion changes
     useEffect(() => {
         if (!activeRegion) return;
-        console.log("[useRegions] activeRegion changed", activeRegion);
         setLoopRegions(false);  // Disable looping if user interacts
         updateActiveRegionColors(activeRegion);
     }, [activeRegion]);
-
-
-
     return {
-    };
+    }
 };

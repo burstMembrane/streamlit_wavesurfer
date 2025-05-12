@@ -1,6 +1,8 @@
 import base64
 import io
+import re
 from dataclasses import dataclass
+from mimetypes import guess_type
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Literal, Optional, Union
 
@@ -191,17 +193,6 @@ class HoverPluginOptions(BasePluginOptions):
     labelBackground: Optional[str] = None
 
 
-"""
-
-    'beforebegin': Before the targetElement itself.
-    'afterbegin': Just inside the targetElement, before its first child.
-    'beforeend': Just inside the targetElement, after its last child.
-    'afterend': After the targetElement itself.
-
-
-"""
-
-
 @dataclass_json
 @dataclass
 class MinimapPluginOptions(BasePluginOptions):
@@ -342,7 +333,6 @@ DEFAULT_PLUGINS = [
 
 DEFAULT_PLUGINS = WaveSurferPluginConfigurationList(plugins=DEFAULT_PLUGINS)
 
-
 Colormap = Literal[
     "jet",
     "hsv",
@@ -380,8 +370,28 @@ Colormap = Literal[
 ]
 
 
+def get_mime_type(audio_data: AudioData) -> str:
+    mime_types = {
+        "wav": "audio/wav",
+        "mp3": "audio/mpeg",
+        "ogg": "audio/ogg",
+        "m4a": "audio/mp4",
+        "flac": "audio/flac",
+        "webm": "audio/webm",
+    }
+    if isinstance(audio_data, (str, Path)):
+        ext = Path(audio_data).suffix.lower()
+        return guess_type(audio_data)[0] or mime_types.get(ext, "audio/wav")
+    elif isinstance(audio_data, np.ndarray):
+        return "audio/wav"
+    elif isinstance(audio_data, (bytes, bytearray)):
+        return "audio/wav"
+    elif isinstance(audio_data, io.BytesIO):
+        return "audio/wav"
+
+
 @st.cache_data
-def _convert_to_base64(audio_data: Optional[AudioData]) -> Optional[str]:
+def audio_to_base64(audio_data: Optional[AudioData]) -> Optional[str]:
     """Convert different types of audio data to base64 string.
 
     Parameters:
@@ -406,72 +416,55 @@ def _convert_to_base64(audio_data: Optional[AudioData]) -> Optional[str]:
     """
     if audio_data is None:
         raise ValueError("Audio data cannot be None")
-
     if isinstance(audio_data, (str, Path)):
         # If it's a file path.
         audio_data = str(audio_data)
         if Path(audio_data).exists():
             with open(audio_data, "rb") as f:
                 audio_bytes = f.read()
-                audio_base64 = base64.b64encode(audio_bytes).decode()
-                ext = Path(audio_data).suffix.lower()
-                mime_type = {
-                    ".wav": "audio/wav",
-                    ".mp3": "audio/mpeg",
-                    ".ogg": "audio/ogg",
-                }.get(ext, "audio/wav")
-                return f"data:{mime_type};base64,{audio_base64}"
+            audio_base64 = base64.b64encode(audio_bytes).decode()
+            mime_type = get_mime_type(audio_data)
+            return f"data:{mime_type};base64,{audio_base64}"
         elif url_util.is_url(audio_data, allowed_schemas=("http", "https", "data")):
             # Try to download the audio from the URL.
-            response = requests.get(audio_data)
-            if response.status_code == 200:
-                audio_bytes = response.content
-                audio_base64 = base64.b64encode(audio_bytes).decode()
-                return f"data:audio/wav;base64,{audio_base64}"
-            else:
-                # Fail a error.
-                st.error(f"Failed to download audio from URL: {audio_data}")
+            url = url_util.parse_url(audio_data)
+            response = requests.get(url)
 
+            # Check if the response is a valid audio file.
+            if response.status_code != 200:
+                raise requests.HTTPError(
+                    f"Failed to download audio from URL: {audio_data}"
+                )
+            mime_type = get_mime_type(audio_data)
+            audio_bytes = response.content
+            audio_base64 = base64.b64encode(audio_bytes).decode()
+            return f"data:{mime_type};base64,{audio_base64}"
         # If the audio already is a base64 string, return it as is.
         return audio_data
-
     elif isinstance(audio_data, np.ndarray):
         # If it's a numpy array, convert it to WAV format.
         buffer = io.BytesIO()
         sf.write(buffer, audio_data, samplerate=16000, format="WAV")
         buffer.seek(0)
         audio_base64 = base64.b64encode(buffer.read()).decode()
-        return f"data:audio/wav;base64,{audio_base64}"
-
+        mime_type = get_mime_type(audio_data)
+        return f"data:{mime_type};base64,{audio_base64}"
     elif isinstance(audio_data, (bytes, bytearray)):
         # If it's a bytes or bytearray object.
         audio_base64 = base64.b64encode(audio_data).decode()
-        return f"data:audio/wav;base64,{audio_base64}"
-
+        mime_type = get_mime_type(audio_data)
+        return f"data:{mime_type};base64,{audio_base64}"
     elif isinstance(audio_data, io.BytesIO):
         # If it's a BytesIO object.
         audio_data.seek(0)
         audio_base64 = base64.b64encode(audio_data.read()).decode()
-        return f"data:audio/wav;base64,{audio_base64}"
-
+        mime_type = get_mime_type(audio_data)
+        return f"data:{mime_type};base64,{audio_base64}"
     elif isinstance(audio_data, (io.RawIOBase, io.BufferedReader)):
         # If it's a file object.
         audio_base64 = base64.b64encode(audio_data.read()).decode()
-        # Try to get the MIME type from the file name.
-        if hasattr(audio_data, "name"):
-            ext = Path(audio_data.name).suffix.lower()
-            mime_type = {
-                ".wav": "audio/wav",
-                ".mp3": "audio/mpeg",
-                ".ogg": "audio/ogg",
-                ".m4a": "audio/mp4",
-                ".flac": "audio/flac",
-                ".webm": "audio/webm",
-            }.get(ext, "audio/wav")
-        else:
-            mime_type = "audio/wav"
+        mime_type = get_mime_type(audio_data)
         return f"data:{mime_type};base64,{audio_base64}"
-
     else:
         st.error(f"Unsupported audio data type: {type(audio_data)}")
         return None

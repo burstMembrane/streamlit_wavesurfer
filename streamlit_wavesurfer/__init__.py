@@ -22,12 +22,12 @@ from streamlit_wavesurfer.utils import (
     RegionList,
     WaveSurferOptions,
     WaveSurferPluginConfigurationList,
-    _convert_to_base64,
+    audio_to_base64,
 )
 
 # When False => run: npm start
 # When True => run: npm run build
-_RELEASE = True
+_RELEASE = False
 if not _RELEASE:
     _component_func = components.declare_component(
         "wavesurfer",
@@ -81,7 +81,7 @@ def wavesurfer(
     # if the wave_options is the dataclass, convert it to a dict
     if isinstance(wave_options, WaveSurferOptions):
         wave_options = wave_options.to_dict()
-    audio_url: AudioData = _convert_to_base64(audio_src)
+    audio_url: AudioData = audio_to_base64(audio_src)
 
     component_value = _component_func(
         audio_src=audio_url,
@@ -120,7 +120,6 @@ if not _RELEASE:
     st.set_page_config(layout="wide")
 
     regions = RegionList(regions())
-    audio_file_path = Path(__file__).parent / "frontend" / "public" / "because.mp3"
     colormap_options = list(Colormap.__args__)
     colormap_selection = st.selectbox(
         "Select a colormap",
@@ -141,7 +140,7 @@ if not _RELEASE:
 
     # Create the wavesurfer component
     state = wavesurfer(
-        audio_src=str(audio_file_path.absolute()),
+        audio_src=audio_src(),
         key="wavesurfer",
         regions=st.session_state.regions,  # Always use the current session state regions
         wave_options=WaveSurferOptions(
@@ -151,15 +150,10 @@ if not _RELEASE:
             fillParent=True,
             height=300,
         ),
-        plugins=[
-            "zoom",
-            "timeline",
-        ],
+        plugins=["timeline", "regions"],
         region_colormap=colormap_selection,
         show_controls=False,
     )
-
-    # Only update session_state.regions when state["ts"] is new
     if state and "ts" in state:
         last_ts = st.session_state.get("_last_ts", 0)
         if state["ts"] != last_ts:
