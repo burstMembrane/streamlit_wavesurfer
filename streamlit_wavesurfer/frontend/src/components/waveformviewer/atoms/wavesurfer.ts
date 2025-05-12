@@ -1,6 +1,6 @@
 import { atom } from 'jotai';
 import WaveSurfer from 'wavesurfer.js';
-import { pluginsAtom, registerPlugins, DEFAULT_PLUGINS } from "./plugins";
+import { registerPlugins, DEFAULT_PLUGINS } from "./plugins";
 import type { WaveSurferUserOptions } from "@waveformviewer/types";
 
 // Atom to store a single WaveSurfer instance and its ready state

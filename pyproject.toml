@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "streamlit_wavesurfer"
+version = "0.0.6"
+description = "A Streamlit component for displaying and interacting with audio waveforms."
+readme = "README.md"
+authors = [{ name = "Liam Power", email = "info@liampower.dev" }]
+requires-python = ">=3.8"
+dependencies = [
+    "streamlit >= 0.63",
+    "numpy >= 1.24.0",
+    "dataclasses_json >= 0.5.7",
+    "requests>=2.32.3",
+    "soundfile>=0.13.1",
+]
+
+[project.urls]
+Homepage = "https://github.com/burstMembrane/streamlit_wavesurfer"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["streamlit_wavesurfer*"]
+
+[tool.setuptools.package-data]
+streamlit_wavesurfer = [
+    "frontend/dist/*",
+    "frontend/dist/index.html",
+    "frontend/dist/assets/*.js",
+    "frontend/dist/assets/*.css",
+    "py.typed",
+]
+[[tool.uv.index]]
+name = "testpypi"
+url = "https://test.pypi.org/simple/"
+publish-url = "https://test.pypi.org/legacy/"
+explicit = true

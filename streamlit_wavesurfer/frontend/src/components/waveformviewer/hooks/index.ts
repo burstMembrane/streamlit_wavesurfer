@@ -1,6 +1,5 @@
-import { useCallback, useMemo } from "react";
-import colormap from 'colormap'
-import { Region } from "@/components/waveformviewer/types";
+import { useCallback } from "react";
+
 export * from "./useRegions";
 export * from "./useWaveSurfer";
 export * from "./useWaveSurferHotkeys";
