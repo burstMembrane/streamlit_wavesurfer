@@ -1,11 +1,10 @@
 import { useEffect, useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import WaveSurfer from "wavesurfer.js";
-import RegionsPlugin from "wavesurfer.js/dist/plugins/regions.js";
 import { WaveSurferUserOptions } from "@waveformviewer/types";
 import { useAtom, useSetAtom, useAtomValue } from "jotai";
 import { pluginsAtom, registerPlugins, DEFAULT_PLUGINS } from "../atoms/plugins";
-import { waveSurferAtom, waveSurferManagerAtom } from "../atoms/wavesurfer";
+import { waveSurferAtom } from "../atoms/wavesurfer";
 
 async function fetchAudioData(audioSrc: string): Promise<Blob> {
     const response = await fetch(audioSrc);
