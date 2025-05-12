@@ -26,4 +26,3 @@ jobs:
 
       - name: Build Python package
         run: uv build
-        working-directory: streamlit_wavesurfer
