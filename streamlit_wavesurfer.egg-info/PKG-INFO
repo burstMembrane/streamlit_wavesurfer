@@ -1,15 +1,16 @@
 Metadata-Version: 2.4
 Name: streamlit_wavesurfer
-Version: 0.0.4
+Version: 0.0.5
 Summary: A Streamlit component for displaying and interacting with audio waveforms.
 Author-email: Liam Power <info@liampower.dev>
 Project-URL: Homepage, https://github.com/burstMembrane/streamlit_wavesurfer
-Requires-Python: >=3.6
+Requires-Python: >=3.8
 Description-Content-Type: text/markdown
 Requires-Dist: streamlit>=0.63
-Requires-Dist: librosa>=0.10.0
 Requires-Dist: numpy>=1.24.0
 Requires-Dist: dataclasses_json>=0.5.7
+Requires-Dist: requests>=2.32.3
+Requires-Dist: soundfile>=0.13.1
 
 # Streamlit Wavesurfer Component
 

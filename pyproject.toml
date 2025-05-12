@@ -8,11 +8,13 @@ version = "0.0.5"
 description = "A Streamlit component for displaying and interacting with audio waveforms."
 readme = "README.md"
 authors = [{ name = "Liam Power", email = "info@liampower.dev" }]
-requires-python = ">=3.6"
+requires-python = ">=3.8"
 dependencies = [
     "streamlit >= 0.63",
     "numpy >= 1.24.0",
     "dataclasses_json >= 0.5.7",
+    "requests>=2.32.3",
+    "soundfile>=0.13.1",
 ]
 
 [project.urls]
