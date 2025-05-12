@@ -32,10 +32,8 @@ from streamlit_wavesurfer.utils import (
 
 # When False => run: npm start
 # When True => run: npm run build
-_RELEASE = False
+_RELEASE = True
 if not _RELEASE:
-    st.set_page_config(layout="wide")
-
     _component_func = components.declare_component(
         "wavesurfer",
         url="http://localhost:3001",
@@ -60,32 +58,48 @@ def wavesurfer(
         List[Literal["regions", "spectrogram", "timeline", "zoom", "hover", "minimap"]]
     ] = None,
 ) -> bool:
-    """Nice audio/video player with audio track selection support.
+    """A waveform viewer that supports wavesurfer plugins
+    @param audio_src: The source of the audio file.
+    @param regions: The regions to display on the waveform.
+    @param key: The key of the wavesurfer component.
+    @param wave_options: The options for the waveform.
+    @param region_colormap: The colormap for the regions.
+    @param show_controls: Whether to show the controls.
+    @param plugins: The plugins to use.
 
-    User can select one of many provided audio tracks (one for each actor) and switch between them in real time.
-    All audio tracks (and video of provided) are synchronized.
 
+    @example
+    # Use a list of regions to display on the waveform
+    ```python
+    wavesurfer(
+        audio_src="https://example.com/audio.mp3",
+        regions=[Region(start=0, end=100, content="Hello, world!")],
+    )
+    ```
+
+    @example
+    # Use a list of plugin names to enable plugins
+    ```python
+    wavesurfer(
+        audio_src="https://example.com/audio.mp3",
+        plugins=["regions", "spectrogram", "timeline", "zoom", "hover", "minimap"],
+    )
+    ```
     Returns:
-     False when not yet initialized (something is loading), and True when ready.
+        The state of the wavesurfer component.
+        regions: The regions currently displayed on the waveform.
+        ts: The timestamp of the last region change.
     """
     if plugins is None:
         plugins = DEFAULT_PLUGINS
     # plugin config
     plugin_configurations = None
-    # if the plugins is a list, convert it to a WaveSurferPluginConfigurationList
     if isinstance(plugins, list):
-        # uf we're just a list of plugin names, configer to wave
         if all(isinstance(plugin, str) for plugin in plugins):
             plugins = WaveSurferPluginConfigurationList.from_name_list(plugins)
         else:
             plugins = WaveSurferPluginConfigurationList(plugins=plugins)
-        # conver to dict
         plugin_configurations = plugins.to_dict()
-    if wave_options is None:
-        wave_options = WaveSurferOptions().to_dict()
-
-    # if we jsut get  alist of plguin names,
-    # if the wave_options is the dataclass, convert it to a dict
     if isinstance(wave_options, WaveSurferOptions):
         wave_options = wave_options.to_dict()
     audio_url: AudioData = audio_to_base64(audio_src)

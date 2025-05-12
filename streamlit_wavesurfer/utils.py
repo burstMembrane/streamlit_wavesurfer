@@ -482,8 +482,8 @@ def audio_to_base64(audio_data: Optional[AudioData]) -> Optional[str]:
             return f"data:{mime_type};base64,{audio_base64}"
         elif url_util.is_url(audio_data, allowed_schemas=("http", "https", "data")):
             # Try to download the audio from the URL.
-            url = url_util.parse_url(audio_data)
-            response = requests.get(url)
+            audio_url = audio_data
+            response = requests.get(audio_url)
 
             # Check if the response is a valid audio file.
             if response.status_code != 200:
