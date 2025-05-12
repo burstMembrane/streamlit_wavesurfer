@@ -20,7 +20,7 @@ from streamlit_wavesurfer.utils import (
 
 # When False => run: npm start
 # When True => run: npm run build
-_RELEASE = True
+_RELEASE = False
 if not _RELEASE:
     _component_func = components.declare_component(
         "wavesurfer",
