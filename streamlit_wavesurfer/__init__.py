@@ -39,8 +39,6 @@ def wavesurfer(
     key: Optional[str] = None,
     wave_options: WaveSurferOptions = None,
     region_colormap: Optional[Colormap] = None,
-    show_spectrogram: bool = False,
-    show_minimap: bool = False,
     show_controls: bool = True,
     plugins: Optional[
         List[Literal["regions", "spectrogram", "timeline", "zoom", "hover", "minimap"]]
@@ -56,7 +54,8 @@ def wavesurfer(
     """
     if plugins is None:
         plugins = DEFAULT_PLUGINS
-
+    # plugin config
+    plugin_configurations = None
     # if the plugins is a list, convert it to a WaveSurferPluginConfigurationList
     if isinstance(plugins, list):
         # uf we're just a list of plugin names, configer to wave

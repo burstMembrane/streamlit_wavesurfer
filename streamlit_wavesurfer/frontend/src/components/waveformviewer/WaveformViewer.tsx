@@ -2,7 +2,6 @@ import React, { useRef, memo } from 'react';
 import { Save } from 'lucide-react';
 import { WavesurferViewerProps } from "@waveformviewer/types";
 import { useRegions, useWaveSurfer, useWaveSurferHotkeys } from "@waveformviewer/hooks";
-import { KeyboardShortcuts } from "@waveformviewer/KeyboardShortcuts";
 import { waveSurferAtom } from "@waveformviewer/atoms/wavesurfer";
 // can't use tailwind for the waveform view styles as it's got all sorts of specialized nested elements
 import "@waveformviewer/styles.css";

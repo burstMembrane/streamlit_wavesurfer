@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useAtom, useSetAtom } from "jotai";
-import { regionsAtom, clearRegionsAtom, activeRegionIdAtom, activeRegionAtom, loopRegionsAtom, AugmentedRegion } from "@waveformviewer/atoms/regions";
+import { regionsAtom, activeRegionAtom, loopRegionsAtom, AugmentedRegion } from "@waveformviewer/atoms/regions";
 import { waveSurferAtom } from "@waveformviewer/atoms/wavesurfer";
 import { getPluginInstanceByName } from "@waveformviewer/atoms/plugins";
 
