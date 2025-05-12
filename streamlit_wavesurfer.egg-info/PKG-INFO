@@ -9,6 +9,8 @@ Requires-Python: >=3.6
 Description-Content-Type: text/plain
 Requires-Dist: streamlit>=0.63
 Requires-Dist: librosa>=0.10.0
+Requires-Dist: numpy>=1.24.0
+Requires-Dist: dataclasses_json>=0.5.7
 Dynamic: author
 Dynamic: author-email
 Dynamic: description-content-type

@@ -1,4 +1,11 @@
-__all__ = ["wavesurfer", "Region", "RegionColormap", "WaveSurferOptions"]
+__all__ = [
+    "wavesurfer",
+    "Region",
+    "RegionColormap",
+    "WaveSurferOptions",
+    "RegionList",
+    "WaveSurferPluginConfigurationList",
+]
 
 
 from pathlib import Path

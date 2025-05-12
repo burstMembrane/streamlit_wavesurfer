@@ -3,6 +3,7 @@ import { Save } from 'lucide-react';
 import { WavesurferViewerProps } from "@waveformviewer/types";
 import { useRegions, useWaveSurfer, useWaveSurferHotkeys } from "@waveformviewer/hooks";
 import { waveSurferAtom } from "@waveformviewer/atoms/wavesurfer";
+import { regionsAtom } from "@waveformviewer/atoms/regions";
 // can't use tailwind for the waveform view styles as it's got all sorts of specialized nested elements
 import "@waveformviewer/styles.css";
 import { useAtomValue } from 'jotai';
@@ -14,7 +15,10 @@ const RegionDisplay = () => {
     const {
     } = useRegions();
 
-
+    const regions = useAtomValue(regionsAtom);
+    if (regions.length === 0) {
+        return null;
+    }
     return (
         <div className="flex justify-between items-center gap-2">
             <button
@@ -38,6 +42,7 @@ const WaveformViewerComponent: React.FC<WavesurferViewerProps> = ({
     const waveformRef = useRef<HTMLDivElement>(null);
     const isPluginActive = useAtomValue(isPluginActiveAtom);
     const isRegionPluginActive = isPluginActive("regions");
+
 
     const {
         currentTime,
