@@ -36,7 +36,6 @@ if not _RELEASE:
 else:
     parent_dir = Path(__file__).parent
     build_dir = parent_dir / "frontend" / "dist"
-    print(build_dir)
     _component_func = components.declare_component("wavesurfer", path=str(build_dir))
 
 
