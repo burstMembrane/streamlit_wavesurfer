@@ -1,6 +1,6 @@
 MANIFEST.in
 README.md
-setup.py
+pyproject.toml
 streamlit_wavesurfer/__init__.py
 streamlit_wavesurfer/py.typed
 streamlit_wavesurfer/utils.py
@@ -9,3 +9,8 @@ streamlit_wavesurfer.egg-info/SOURCES.txt
 streamlit_wavesurfer.egg-info/dependency_links.txt
 streamlit_wavesurfer.egg-info/requires.txt
 streamlit_wavesurfer.egg-info/top_level.txt
+streamlit_wavesurfer/frontend/dist/because.json
+streamlit_wavesurfer/frontend/dist/because.mp3
+streamlit_wavesurfer/frontend/dist/index.html
+streamlit_wavesurfer/frontend/dist/assets/index-CxjU31mB.css
+streamlit_wavesurfer/frontend/dist/assets/index-Cz6KFvur.js

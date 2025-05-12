@@ -12,6 +12,7 @@ from dataclasses_json import dataclass_json
 from streamlit import url_util
 
 AudioData = str | bytes | io.BytesIO | np.ndarray | io.FileIO
+PLUGIN_NAMES = ["regions", "spectrogram", "timeline", "zoom", "hover", "minimap"]
 
 
 @dataclass_json
@@ -290,7 +291,9 @@ class WaveSurferPluginConfiguration:
                 name="minimap", options=MinimapPluginOptions().__default_options__()
             )
         else:
-            raise ValueError(f"Unknown plugin: {name}")
+            raise ValueError(
+                f"Unknown plugin: {name}. Valid plugins are: {', '.join(PLUGIN_NAMES)}"
+            )
 
 
 @dataclass_json

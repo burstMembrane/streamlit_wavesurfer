@@ -36,7 +36,13 @@ if not _RELEASE:
 else:
     parent_dir = Path(__file__).parent
     build_dir = parent_dir / "frontend" / "dist"
-    _component_func = components.declare_component("wavesurfer", path=str(build_dir))
+    build_dir = build_dir.absolute()
+
+    if not build_dir.exists():
+        raise FileNotFoundError(f"Build directory {build_dir} does not exist")
+    _component_func = components.declare_component(
+        "wavesurfer", path=build_dir.absolute()
+    )
 
 
 def wavesurfer(
