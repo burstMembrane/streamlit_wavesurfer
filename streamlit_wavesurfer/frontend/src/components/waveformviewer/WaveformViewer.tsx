@@ -31,7 +31,7 @@ const WaveformViewerComponent: React.FC<WavesurferViewerProps> = ({
         <div className="flex flex-col gap-4 p-4 w-full box-border">
             <div ref={waveformRef}
                 id="waveform"
-                className="w-full min-h-[200px] mb-4" />
+                className="w-full min-h-[200px] overflow-hidden" />
             {/* audio controls */}
             {showControls && <AudioControls
                 currentTime={currentTime}

@@ -21,6 +21,7 @@
     "typescript": "^5.8.3",
     "vite": "^6.3.3",
     "vite-tsconfig-paths": "^5.1.4",
+    "wavesurfer-overlay-plugin": "^0.1.5",
     "wavesurfer.js": "^7.9.4"
   },
   "scripts": {

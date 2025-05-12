@@ -5,6 +5,7 @@ import ZoomPlugin, { ZoomPluginOptions } from "wavesurfer.js/dist/plugins/zoom.j
 import HoverPlugin, { HoverPluginOptions } from "wavesurfer.js/dist/plugins/hover.js";
 import MinimapPlugin, { MinimapPluginOptions } from "wavesurfer.js/dist/plugins/minimap.js";
 import { atom, useAtomValue } from "jotai";
+import OverlayPlugin, { OverlayPluginOptions } from "wavesurfer-overlay-plugin";
 // import the wavesurfer atom
 import { waveSurferAtom } from "./wavesurfer";
 
@@ -15,6 +16,7 @@ type PluginOptionsMap = {
     zoom: ZoomPluginOptions;
     hover: HoverPluginOptions;
     minimap: MinimapPluginOptions;
+    overlay: OverlayPluginOptions
 };
 export type WaveSurferPluginConfigurationNested = {
     plugins: WaveSurferPluginConfiguration[];
@@ -66,6 +68,15 @@ export const PLUGINS_MAP: {
     zoom: (options) => ZoomPlugin.create(options && Object.keys(options).length > 0 ? options : undefined),
     hover: (options) => HoverPlugin.create(options && Object.keys(options).length > 0 ? options : undefined),
     minimap: (options) => MinimapPlugin.create(options || {}),
+    overlay: (options) => {
+        // OverlayPluginOptions requires imageUrl to be defined (string or string[])
+        // Provide a default empty string if not set
+        const opts = { ...options } as OverlayPluginOptions;
+        if (typeof opts.imageUrl === 'undefined') {
+            opts.imageUrl = '';
+        }
+        return OverlayPlugin.create(opts);
+    },
 };
 
 
@@ -80,6 +91,7 @@ type PluginInstanceMap = {
     zoom: ZoomPlugin;
     hover: HoverPlugin;
     minimap: MinimapPlugin;
+    overlay: OverlayPlugin;
     // Add others as needed
 };
 
@@ -108,7 +120,6 @@ export function registerPlugin(plugin: WaveSurferPluginConfiguration, wavesurfer
     const pluginInstance = factory(options as any);
     // add the name to the plugin instance
     pluginInstance.name = plugin.name;
-    console.log("registering plugin", pluginInstance);
     wavesurfer.registerPlugin(pluginInstance);
     // set the plugin atom
 
@@ -119,6 +130,7 @@ export function unregisterPlugin(plugin: WaveSurferPluginConfiguration, wavesurf
     console.log("unregistering plugin", plugin.name);
     wavesurfer.destroyPlugin(plugin.name);
 }
+
 export function updatePluginOptions(plugin: WaveSurferPluginConfiguration, wavesurfer: any) {
     // destroy the plugin
     unregisterPlugin(plugin, wavesurfer);

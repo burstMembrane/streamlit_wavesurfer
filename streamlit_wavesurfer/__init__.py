@@ -18,17 +18,24 @@ from streamlit_wavesurfer.utils import (
     DEFAULT_PLUGINS,
     AudioData,
     Colormap,
+    ImageData,
+    OverlayPluginOptions,
     Region,
     RegionList,
     WaveSurferOptions,
+    WaveSurferPluginConfiguration,
     WaveSurferPluginConfigurationList,
+    ZoomPluginOptions,
     audio_to_base64,
+    image_to_base64,
 )
 
 # When False => run: npm start
 # When True => run: npm run build
 _RELEASE = False
 if not _RELEASE:
+    st.set_page_config(layout="wide")
+
     _component_func = components.declare_component(
         "wavesurfer",
         url="http://localhost:3001",
@@ -117,7 +124,14 @@ if not _RELEASE:
         audio_path = Path(__file__).parent / "frontend" / "public" / "because.mp3"
         return str(audio_path.absolute())
 
-    st.set_page_config(layout="wide")
+    @st.cache_data
+    def image_src() -> str:
+        """Sample image source from the image file."""
+
+        image_path = Path(__file__).parent / "frontend" / "public" / "because.png"
+        return str(image_path.absolute())
+
+    image_url: ImageData = image_to_base64(image_src())
 
     regions = RegionList(regions())
     colormap_options = list(Colormap.__args__)
@@ -131,13 +145,26 @@ if not _RELEASE:
         wavecolor_selection = st.color_picker("Select a wave color", value="#cccccc")
     with cols[1]:
         progresscolor_selection = st.color_picker(
-            "Select a progress color", value="#3F51B5"
+            "Select a progress color", value="#cccccc"
         )
     # Initialize regions in session state if not already present
     if "regions" not in st.session_state:
         st.session_state.regions = regions
         st.session_state._last_ts = 0
-
+    # overlay plugin options
+    overlay_plugin_configuration = WaveSurferPluginConfiguration(
+        name="overlay",
+        options=OverlayPluginOptions(
+            imageUrl=image_url,
+            position="overlay",
+            opacity=1.0,
+            # hideWaveform=True,
+        ),
+    )
+    zoom_plugin_configuration = WaveSurferPluginConfiguration(
+        name="zoom",
+        options=ZoomPluginOptions().__default_options__(),
+    )
     # Create the wavesurfer component
     state = wavesurfer(
         audio_src=audio_src(),
@@ -147,12 +174,12 @@ if not _RELEASE:
             waveColor=wavecolor_selection,
             progressColor=progresscolor_selection,
             autoScroll=True,
-            fillParent=True,
-            height=300,
+            autoCenter=True,
+            height=512,
         ),
-        plugins=["timeline", "regions"],
+        plugins=[overlay_plugin_configuration, zoom_plugin_configuration],
         region_colormap=colormap_selection,
-        show_controls=False,
+        show_controls=True,
     )
     if state and "ts" in state:
         last_ts = st.session_state.get("_last_ts", 0)

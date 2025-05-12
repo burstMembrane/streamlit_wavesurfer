@@ -1,6 +1,5 @@
 import base64
 import io
-import re
 from dataclasses import dataclass
 from mimetypes import guess_type
 from pathlib import Path
@@ -14,7 +13,16 @@ from dataclasses_json import dataclass_json
 from streamlit import url_util
 
 AudioData = str | bytes | io.BytesIO | np.ndarray | io.FileIO
-PLUGIN_NAMES = ["regions", "spectrogram", "timeline", "zoom", "hover", "minimap"]
+ImageData = str | Path | bytes | io.BytesIO
+PLUGIN_NAMES = [
+    "regions",
+    "spectrogram",
+    "timeline",
+    "zoom",
+    "hover",
+    "minimap",
+    "overlay",
+]
 
 
 @dataclass_json
@@ -39,6 +47,8 @@ class BasePluginOptions:
             return HoverPluginOptions()
         elif name == "minimap":
             return MinimapPluginOptions()
+        elif name == "overlay":
+            return OverlayPluginOptions()
         else:
             raise ValueError(f"Unknown plugin: {name}")
 
@@ -221,6 +231,27 @@ class PluginOptionsMap:
 
 @dataclass_json
 @dataclass
+class OverlayPluginOptions(BasePluginOptions):
+    # URL or array of URLs for the overlay image(s)
+    imageUrl: str | List[str]
+    # Container element or selector string for the overlay
+    container: Optional[str] = None
+    # Background color of the overlay container
+    backgroundColor: Optional[str] = None
+    # Duration of the audio in seconds (if not provided, will use WaveSurfer's duration)
+    duration: Optional[float] = None
+    # Opacity value(s) for the overlay image(s) (0-1)
+    opacity: Optional[float] = None
+    # Position of the overlay relative to the waveform ('overlay' or 'underlay')
+    position: Optional[Literal["overlay", "underlay"]] = None
+    # Whether to hide the waveform
+    hideWaveform: Optional[bool] = None
+    # Rendering mode for the overlay image(s)
+    imageRendering: Optional[Literal["auto", "pixelated", "smooth"]] = None
+
+
+@dataclass_json
+@dataclass
 class InstantiatedPlugin:
     listeners: Dict[str, Any]
     subscriptions: List[Any]
@@ -237,6 +268,7 @@ class WaveSurferPluginConfiguration:
         "zoom",
         "hover",
         "minimap",
+        "overlay",
     ]
     options: (
         MinimapPluginOptions
@@ -244,6 +276,7 @@ class WaveSurferPluginConfiguration:
         | TimelinePluginOptions
         | ZoomPluginOptions
         | HoverPluginOptions
+        | OverlayPluginOptions
     )
 
     instance: Optional[InstantiatedPlugin] = None
@@ -370,6 +403,28 @@ Colormap = Literal[
 ]
 
 
+def get_image_mime_type(image_data: ImageData) -> str:
+    mime_types = {
+        "png": "image/png",
+        "jpg": "image/jpeg",
+        "jpeg": "image/jpeg",
+        "gif": "image/gif",
+        "svg": "image/svg+xml",
+        "webp": "image/webp",
+    }
+    if isinstance(image_data, (str, Path)):
+        ext = Path(image_data).suffix.lower()
+        return guess_type(image_data)[0] or mime_types.get(ext, "image/png")
+    elif isinstance(image_data, np.ndarray):
+        return "image/png"
+    elif isinstance(image_data, (bytes, bytearray)):
+        return "image/png"
+    elif isinstance(image_data, io.BytesIO):
+        return "image/png"
+    else:
+        st.error(f"Unsupported image data type: {type(image_data)}")
+
+
 def get_mime_type(audio_data: AudioData) -> str:
     mime_types = {
         "wav": "audio/wav",
@@ -467,6 +522,30 @@ def audio_to_base64(audio_data: Optional[AudioData]) -> Optional[str]:
         return f"data:{mime_type};base64,{audio_base64}"
     else:
         st.error(f"Unsupported audio data type: {type(audio_data)}")
+        return None
+
+
+@st.cache_data
+def image_to_base64(image_data: Optional[ImageData]) -> Optional[str]:
+    if image_data is None:
+        return None
+    if isinstance(image_data, (str, Path)):
+        with open(image_data, "rb") as f:
+            image_bytes = f.read()
+            image_base64 = base64.b64encode(image_bytes).decode()
+            mime_type = get_image_mime_type(image_data)
+            return f"data:{mime_type};base64,{image_base64}"
+    elif isinstance(image_data, (bytes, bytearray)):
+        image_base64 = base64.b64encode(image_data).decode()
+        mime_type = get_mime_type(image_data)
+        return f"data:{mime_type};base64,{image_base64}"
+    elif isinstance(image_data, io.BytesIO):
+        image_data.seek(0)
+        image_base64 = base64.b64encode(image_data.read()).decode()
+        mime_type = get_image_mime_type(image_data)
+        return f"data:{mime_type};base64,{image_base64}"
+    else:
+        st.error(f"Unsupported image data type: {type(image_data)}")
         return None
 
 
