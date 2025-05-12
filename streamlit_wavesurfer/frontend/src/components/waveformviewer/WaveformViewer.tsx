@@ -1,7 +1,7 @@
-import React, { useRef, useState, memo } from 'react';
+import React, { useRef, memo } from 'react';
 import { Save } from 'lucide-react';
 import { WavesurferViewerProps } from "@waveformviewer/types";
-import { useRegions, useWaveSurfer, useWaveSurferHotkeys, useTimeFormatter } from "@waveformviewer/hooks";
+import { useRegions, useWaveSurfer, useWaveSurferHotkeys } from "@waveformviewer/hooks";
 import { KeyboardShortcuts } from "@waveformviewer/KeyboardShortcuts";
 import { waveSurferAtom } from "@waveformviewer/atoms/wavesurfer";
 // can't use tailwind for the waveform view styles as it's got all sorts of specialized nested elements
@@ -34,36 +34,28 @@ const WaveformViewerComponent: React.FC<WavesurferViewerProps> = ({
     audioSrc,
     onReady,
     waveOptions,
-    onRegionsChange,
     showSpectrogram,
-    showMinimap,
-    showControls
-}) => {
+    showMinimap }) => {
     const waveformRef = useRef<HTMLDivElement>(null);
-    const [loopRegions, setLoopRegions] = useState(false);
     const isPluginActive = useAtomValue(isPluginActiveAtom);
     const isRegionPluginActive = isPluginActive("regions");
 
 
     const {
-        waveform,
         currentTime,
         duration,
         isPlaying,
         play,
         pause,
         skipForward,
-        skipBackward,
-        setZoom,
-        isLoading
-    } = useWaveSurfer({
-        containerRef: waveformRef as React.RefObject<HTMLDivElement>,
-        audioSrc,
-        waveOptions,
-        showSpectrogram,
-        showMinimap,
-        onReady
-    });
+        skipBackward } = useWaveSurfer({
+            containerRef: waveformRef as React.RefObject<HTMLDivElement>,
+            audioSrc,
+            waveOptions,
+            showSpectrogram,
+            showMinimap,
+            onReady
+        });
 
     const { ready: waveformReady } = useAtomValue(waveSurferAtom);
 
