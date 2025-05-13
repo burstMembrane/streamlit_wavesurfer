@@ -103,10 +103,15 @@ def wavesurfer(
     if isinstance(wave_options, WaveSurferOptions):
         wave_options = wave_options.to_dict()
     audio_url: AudioData = audio_to_base64(audio_src)
+    if isinstance(regions, RegionList):
+        regions = regions.to_dict()
+
+    if all(isinstance(region, Region) for region in regions):
+        regions = [region.to_dict() for region in regions]
 
     component_value = _component_func(
         audio_src=audio_url,
-        regions=regions.to_dict() if regions else None,
+        regions=regions if regions else None,
         key=key,
         default=0,
         wave_options=wave_options,
