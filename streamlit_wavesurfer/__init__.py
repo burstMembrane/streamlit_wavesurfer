@@ -103,10 +103,20 @@ def wavesurfer(
     if isinstance(wave_options, WaveSurferOptions):
         wave_options = wave_options.to_dict()
     audio_url: AudioData = audio_to_base64(audio_src)
-    if isinstance(regions, RegionList):
-        regions = regions.to_dict()
 
-    if all(isinstance(region, Region) for region in regions):
+    # if it's a list of dicts, pass it as is
+    if isinstance(regions, list) and all(
+        isinstance(region, dict) for region in regions
+    ):
+        print("regions is a list of dicts")
+        regions = regions
+    # if it's a RegionList, convert to dict
+    elif isinstance(regions, RegionList):
+        print("regions is a RegionList")
+        regions = regions.to_dict()
+    # if it's a list of Region, convert to list of dict
+    elif all(isinstance(region, Region) for region in regions):
+        print("regions is a list of Region")
         regions = [region.to_dict() for region in regions]
 
     component_value = _component_func(
