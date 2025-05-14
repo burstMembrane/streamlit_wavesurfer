@@ -37,7 +37,7 @@ load_dotenv()
 
 # When False => run: npm start
 # When True => run: npm run build
-_RELEASE = True if getenv("RELEASE", False) == "True" else False
+_RELEASE = True if getenv("RELEASE", "True") == "True" else False
 if not _RELEASE:
     _component_func = components.declare_component(
         "wavesurfer",
