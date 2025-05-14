@@ -37,7 +37,7 @@ load_dotenv()
 
 # When False => run: npm start
 # When True => run: npm run build
-_RELEASE = True if getenv("RELEASE", False) else False
+_RELEASE = True if getenv("RELEASE", False) == "True" else False
 if not _RELEASE:
     _component_func = components.declare_component(
         "wavesurfer",
@@ -109,19 +109,13 @@ def wavesurfer(
         wave_options = wave_options.to_dict()
     audio_url: AudioData = audio_to_base64(audio_src)
 
-    # if it's a list of dicts, pass it as is
     if isinstance(regions, list) and all(
         isinstance(region, dict) for region in regions
     ):
-        print("regions is a list of dicts")
         regions = regions
-    # if it's a RegionList, convert to dict
     elif isinstance(regions, RegionList):
-        print("regions is a RegionList")
         regions = regions.to_dict()
-    # if it's a list of Region, convert to list of dict
     elif all(isinstance(region, Region) for region in regions):
-        print("regions is a list of Region")
         regions = [region.to_dict() for region in regions]
 
     component_value = _component_func(
@@ -147,7 +141,7 @@ if not _RELEASE:
     @st.cache_data
     def regions() -> List[Region]:
         """Sample regions from the audio file."""
-        regions_path = Path(__file__).parent / "assets" / "because.json"
+        regions_path = Path(__file__).parent.parent / "assets" / "because.json"
         with open(regions_path, "r") as f:
             regions = json.load(f)
         return regions
@@ -155,14 +149,14 @@ if not _RELEASE:
     @st.cache_data
     def audio_src() -> str:
         """Sample audio source from the audio file."""
-        audio_path = Path(__file__).parent / "assets" / "because.mp3"
+        audio_path = Path(__file__).parent.parent / "assets" / "because.mp3"
         return str(audio_path.absolute())
 
     @st.cache_data
     def image_src() -> str:
         """Sample image source from the image file."""
 
-        image_path = Path(__file__).parent / "assets" / "because.png"
+        image_path = Path(__file__).parent.parent / "assets" / "because.png"
         return str(image_path.absolute())
 
     image_url: ImageData = image_to_base64(image_src())
