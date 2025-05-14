@@ -1,9 +1,9 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import WaveSurfer from "wavesurfer.js";
 import { WaveSurferUserOptions } from "@waveformviewer/types";
 import { useAtom, useSetAtom, useAtomValue } from "jotai";
-import { pluginsAtom, registerPlugins, DEFAULT_PLUGINS } from "../atoms/plugins";
+import { pluginsAtom, unregisterPlugin, WaveSurferPluginConfiguration, registerPlugin } from "../atoms/plugins";
 import { waveSurferAtom } from "../atoms/wavesurfer";
 
 async function fetchAudioData(audioSrc: string): Promise<Blob> {
@@ -35,6 +35,8 @@ export const useWaveSurfer = ({
     });
     const setWaveSurfer = useSetAtom(waveSurferAtom);
     const { instance: waveSurfer } = useAtomValue(waveSurferAtom);
+    const prevPluginsRef = useRef<WaveSurferPluginConfiguration[]>([]);
+
     const createWavesurfer = useCallback(() => {
         if (!containerRef.current || !audioBlob) return;
         const ws = WaveSurfer.create({
@@ -43,10 +45,32 @@ export const useWaveSurfer = ({
             minPxPerSec: 10,
             ...waveOptions,
         });
+
+        // Unregister plugins that are no longer present or whose options changed
+        prevPluginsRef.current.forEach(prevPlugin => {
+            const current = plugins.find(p => p.name === prevPlugin.name);
+            if (
+                !current ||
+                JSON.stringify(current.options) !== JSON.stringify(prevPlugin.options)
+            ) {
+                unregisterPlugin(prevPlugin, ws);
+            }
+        });
         setWaveSurfer({ instance: ws, ready: false });
         console.log("created wavesurfer", ws);
         console.log("plugins", plugins);
-        registerPlugins(plugins.length ? plugins : DEFAULT_PLUGINS, ws);
+        // Register new or updated plugins
+        plugins.forEach(plugin => {
+            const prev = prevPluginsRef.current.find(p => p.name === plugin.name);
+            if (
+                !prev ||
+                JSON.stringify(prev.options) !== JSON.stringify(plugin.options)
+            ) {
+                registerPlugin(plugin, ws);
+            }
+        });
+        // Update the ref
+        prevPluginsRef.current = plugins;
         ws.on("ready", () => {
             setWaveSurfer({ instance: ws, ready: true });
             console.log("wavesurfer ready", ws);

@@ -8,11 +8,13 @@ __all__ = [
 ]
 
 
+from os import getenv
 from pathlib import Path
 from typing import List, Literal, Optional
 
 import streamlit as st
 import streamlit.components.v1 as components
+from dotenv import load_dotenv
 
 from streamlit_wavesurfer.utils import (
     DEFAULT_PLUGINS,
@@ -22,6 +24,7 @@ from streamlit_wavesurfer.utils import (
     OverlayPluginOptions,
     Region,
     RegionList,
+    RegionsPluginOptions,
     WaveSurferOptions,
     WaveSurferPluginConfiguration,
     WaveSurferPluginConfigurationList,
@@ -30,13 +33,15 @@ from streamlit_wavesurfer.utils import (
     image_to_base64,
 )
 
+load_dotenv()
+
 # When False => run: npm start
 # When True => run: npm run build
-_RELEASE = True
+_RELEASE = True if getenv("RELEASE", False) else False
 if not _RELEASE:
     _component_func = components.declare_component(
         "wavesurfer",
-        url="http://localhost:3001",
+        url="http://localhost:5432",
     )
 else:
     parent_dir = Path(__file__).parent
@@ -142,7 +147,7 @@ if not _RELEASE:
     @st.cache_data
     def regions() -> List[Region]:
         """Sample regions from the audio file."""
-        regions_path = Path(__file__).parent / "frontend" / "public" / "because.json"
+        regions_path = Path(__file__).parent / "assets" / "because.json"
         with open(regions_path, "r") as f:
             regions = json.load(f)
         return regions
@@ -150,14 +155,14 @@ if not _RELEASE:
     @st.cache_data
     def audio_src() -> str:
         """Sample audio source from the audio file."""
-        audio_path = Path(__file__).parent / "frontend" / "public" / "because.mp3"
+        audio_path = Path(__file__).parent / "assets" / "because.mp3"
         return str(audio_path.absolute())
 
     @st.cache_data
     def image_src() -> str:
         """Sample image source from the image file."""
 
-        image_path = Path(__file__).parent / "frontend" / "public" / "because.png"
+        image_path = Path(__file__).parent / "assets" / "because.png"
         return str(image_path.absolute())
 
     image_url: ImageData = image_to_base64(image_src())
@@ -181,19 +186,33 @@ if not _RELEASE:
         st.session_state.regions = regions
         st.session_state._last_ts = 0
     # overlay plugin options
-    overlay_plugin_configuration = WaveSurferPluginConfiguration(
-        name="overlay",
-        options=OverlayPluginOptions(
-            imageUrl=image_url,
-            position="overlay",
-            opacity=1.0,
-            # hideWaveform=True,
-        ),
-    )
+
+    overlay_selection = st.checkbox("Overlay", value=False)
+    if overlay_selection:
+        overlay_plugin_configuration = WaveSurferPluginConfiguration(
+            name="overlay",
+            options=OverlayPluginOptions(
+                imageUrl=image_url,
+                position="overlay",
+                opacity=1.0,
+                # hideWaveform=True,
+            ),
+        )
     zoom_plugin_configuration = WaveSurferPluginConfiguration(
         name="zoom",
         options=ZoomPluginOptions().__default_options__(),
     )
+
+    region_plugin_configuration = WaveSurferPluginConfiguration(
+        name="regions",
+        options=RegionsPluginOptions(),
+    )
+    plugins = [
+        region_plugin_configuration,
+        zoom_plugin_configuration,
+    ]
+    if overlay_selection:
+        plugins.append(overlay_plugin_configuration)
     # Create the wavesurfer component
     state = wavesurfer(
         audio_src=audio_src(),
@@ -206,7 +225,7 @@ if not _RELEASE:
             autoCenter=True,
             height=512,
         ),
-        plugins=[overlay_plugin_configuration, zoom_plugin_configuration],
+        plugins=plugins,
         region_colormap=colormap_selection,
         show_controls=True,
     )

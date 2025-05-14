@@ -128,7 +128,11 @@ export function registerPlugin(plugin: WaveSurferPluginConfiguration, wavesurfer
 
 export function unregisterPlugin(plugin: WaveSurferPluginConfiguration, wavesurfer: any) {
     console.log("unregistering plugin", plugin.name);
-    wavesurfer.destroyPlugin(plugin.name);
+    const activePlugins = wavesurfer.getActivePlugins();
+    const pluginInstance = activePlugins.find((plugin: any) => plugin.name === plugin.name);
+    if (pluginInstance) {
+        pluginInstance.destroy();
+    }
 }
 
 export function updatePluginOptions(plugin: WaveSurferPluginConfiguration, wavesurfer: any) {
@@ -139,6 +143,9 @@ export function updatePluginOptions(plugin: WaveSurferPluginConfiguration, waves
 }
 
 export function registerPlugins(plugins: WaveSurferPluginConfiguration[], wavesurfer: any) {
+    if (!plugins || plugins.length === 0 || !plugins.length) return;
+
+    // register the new plugins
     plugins.forEach(plugin => registerPlugin(plugin, wavesurfer));
 }
 export function getPluginInstanceByName<K extends keyof PluginInstanceMap>(name: K): PluginInstanceMap[K] | null {
