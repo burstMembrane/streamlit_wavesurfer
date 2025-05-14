@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "streamlit_wavesurfer"
-version = "0.0.7"
+version = "0.1.0"
 description = "A Streamlit component for displaying and interacting with audio waveforms."
 readme = "README.md"
 authors = [{ name = "Liam Power", email = "info@liampower.dev" }]
