@@ -108,7 +108,9 @@ def wavesurfer(
     if isinstance(wave_options, WaveSurferOptions):
         wave_options = wave_options.to_dict()
     audio_url: AudioData = audio_to_base64(audio_src)
-
+    if not isinstance(regions, list):
+        # initialize empty list
+        regions = []
     if isinstance(regions, list) and all(
         isinstance(region, dict) for region in regions
     ):
