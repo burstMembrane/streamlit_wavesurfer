@@ -8,8 +8,9 @@ dev:
 	tmux attach -t dev
 
 build:
-	uv build .
 	cd streamlit_wavesurfer/frontend && bun run build
+	uv build 
+	
 
 publish:
 	uv publish 
