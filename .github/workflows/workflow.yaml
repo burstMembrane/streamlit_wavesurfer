@@ -38,7 +38,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
-      contents: rea
+      contents: read
     environment: main
     steps:
       - name: Checkout code
