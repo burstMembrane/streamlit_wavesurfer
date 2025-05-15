@@ -36,6 +36,9 @@ jobs:
   publish:
     if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: rea
     environment: main
     steps:
       - name: Checkout code
