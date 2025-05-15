@@ -12,22 +12,24 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name != 'push' || startsWith(github.ref, 'refs/heads/')
     steps:
-      - &checkout
+      - name: Checkout code
         uses: actions/checkout@v3
-      - &setup-bun
+
+      - name: Set up Bun
         uses: oven-sh/setup-bun@v2
-      - &setup-uv
-        uses: astral-sh/setup-uv@v5
-      - &install-frontend
-        name: Install frontend dependencies
+
+      - name: Install frontend dependencies
         run: bun install --frozen-lockfile --verbose
         working-directory: streamlit_wavesurfer/frontend
-      - &build-frontend
-        name: Build frontend
+
+      - name: Build frontend
         run: bun run build
         working-directory: streamlit_wavesurfer/frontend
-      - &build-python
-        name: Build Python package
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Build Python package
         run: uv build
 
   publish:
@@ -36,12 +38,26 @@ jobs:
     runs-on: ubuntu-latest
     environment: main
     steps:
-      - *checkout
-      - *setup-bun
-      - *setup-uv
-      - *install-frontend
-      - *build-frontend
-      - *build-python
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install frontend dependencies
+        run: bun install --frozen-lockfile --verbose
+        working-directory: streamlit_wavesurfer/frontend
+
+      - name: Build frontend
+        run: bun run build
+        working-directory: streamlit_wavesurfer/frontend
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Build Python package
+        run: uv build
+
       - name: Publish Python package
         run: uv publish
         env:
