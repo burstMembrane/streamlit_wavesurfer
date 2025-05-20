@@ -194,3 +194,9 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# Added by ob
+streamlit_wavesurfer.md
+
+# Added by ob
+.ob
