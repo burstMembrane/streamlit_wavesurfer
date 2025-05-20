@@ -2,15 +2,17 @@ import {
     Streamlit,
     withStreamlitConnection,
 } from "streamlit-component-lib"
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import { WavesurferViewer } from "@/components/waveformviewer/WaveformViewer"
 import { Region } from "@/components/waveformviewer/types"
 import { WaveSurferUserOptions } from "@/components/waveformviewer/types"
 import { Suspense } from "react"
-import { useAtom, useSetAtom } from "jotai"
+import { useAtom, useAtomValue, useSetAtom } from "jotai"
 import { regionsAtom, setRegionsAtom } from "@waveformviewer/atoms/regions"
 import { WaveSurferPluginConfigurationNested } from "@waveformviewer/atoms/plugins"
 import { pluginsAtom } from "@waveformviewer/atoms/plugins"
+import { waveSurferAtom } from "./components/waveformviewer/atoms/wavesurfer"
+import { keyAtom } from "./components/waveformviewer/atoms/key"
 
 export interface WavesurferComponentProps {
     args: {
@@ -27,16 +29,18 @@ export interface WavesurferComponentProps {
         wave_options: WaveSurferUserOptions;
         plugin_configurations: WaveSurferPluginConfigurationNested;
         region_colormap: string;
-
+        key: string;
         controls: boolean;
     };
 }
 
 const WavesurferComponent = ({ args }: WavesurferComponentProps) => {
-    const [ready, setReady] = useState(false);
+    const [key, setKey] = useAtom(keyAtom);
     const [regions] = useAtom(regionsAtom);
     const setRegions = useSetAtom(setRegionsAtom);
+    const { ready: waveformReady } = useAtomValue(waveSurferAtom);
     useEffect(() => {
+
         if (!args.regions || args.regions.length === 0 || !args.region_colormap) return;
         if (args.regions.length !== regions.length) {
             setRegions({ regions: args.regions as Region[], colormapName: args.region_colormap });
@@ -58,12 +62,27 @@ const WavesurferComponent = ({ args }: WavesurferComponentProps) => {
     }, [args.regions, args.region_colormap]);
 
     useEffect(() => {
+        setKey(args.key);
+    }, [args.key]);
+
+    useEffect(() => {
+        if (!waveformReady) return;
         Streamlit.setFrameHeight();
-    });
+        Streamlit.setComponentValue({
+            ready: true,
+            regions: args.regions,
+            key: key,
+            syncChannelId: `streamlit-wavesurfer-sync-${key}`
+        });
+    }, [waveformReady]);
+
+
+
+
     const setPlugins = useSetAtom(pluginsAtom);
     useEffect(() => {
         if (!args.plugin_configurations || !args.plugin_configurations.plugins) return;
-        console.log("args.plugin_configurations", args.plugin_configurations)
+
         const nested_plugs = args.plugin_configurations.plugins
         const plugins = nested_plugs.map((plugin) => {
             if (!plugin.options) return plugin;
@@ -79,13 +98,7 @@ const WavesurferComponent = ({ args }: WavesurferComponentProps) => {
                 audioSrc={audioSrc}
                 waveOptions={waveOptions}
                 onReady={() => {
-                    if (!ready) {
-                        setReady(true);
-                        setTimeout(() => Streamlit.setComponentValue({
-                            ready: true,
-                            regions: args.regions
-                        }), 300);
-                    }
+                    console.log("onReady")
                 }}
                 regionColormap={args.region_colormap}
                 showControls={args.controls}

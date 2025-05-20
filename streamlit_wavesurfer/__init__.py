@@ -37,7 +37,8 @@ load_dotenv()
 
 # When False => run: npm start
 # When True => run: npm run build
-_RELEASE = True if getenv("RELEASE", "True") == "True" else False
+# _RELEASE = True if getenv("RELEASE", "True") == "True" else False
+_RELEASE = True
 if not _RELEASE:
     _component_func = components.declare_component(
         "wavesurfer",
@@ -49,6 +50,7 @@ else:
     build_dir = build_dir.absolute()
     if not build_dir.exists():
         raise FileNotFoundError(f"Build directory {build_dir} does not exist")
+
     _component_func = components.declare_component("wavesurfer", path=build_dir)
 
 
@@ -139,6 +141,7 @@ if not _RELEASE:
 
     import pandas as pd
     import streamlit as st
+    from streamlit.components.v1 import html
 
     @st.cache_data
     def regions() -> List[Region]:
@@ -225,6 +228,60 @@ if not _RELEASE:
         region_colormap=colormap_selection,
         show_controls=True,
     )
+    if state and "syncChannelId" in state:
+        # get the sync channel id
+
+        sync_channel_id = state.get("syncChannelId", None)
+        st.markdown(f"syncChannelId: {sync_channel_id}")
+        if sync_channel_id:
+            html(
+                """
+                <script>
+
+             
+                console.log("syncChannelId", "{}");
+                // Create a unique channel name based on the component key
+                setTimeout(() => {{
+                syncChannel = new BroadcastChannel("{}");
+             
+                // Listen for messages from other instances
+                syncChannel.onmessage = (event) => {{
+                    console.log(event);
+                    if (event.data.type === "timeUpdate") {{
+                        console.log("timeUpdate", event.data.time);
+                    }}
+                }};
+                console.log("syncChannel", syncChannel);
+                // post a message to the sync channel
+                setTimeout(() => {{
+                    syncChannel.postMessage({{
+                        type: "ready",
+                        time: 0
+                    }});
+                    }}, 1000);
+                    
+                }}, 1000);
+
+
+
+              
+            </script>
+            """.format(
+                    sync_channel_id,
+                    sync_channel_id,
+                )
+            )
+            # subsctibe to window.postMessage
+            html(
+                """
+                <script>
+                console.log("subscribing to window.postMessage");
+                window.addEventListener("message", (event) => {
+                    console.log(event);
+                });
+                </script>
+                """
+            )
     if state and "ts" in state:
         last_ts = st.session_state.get("_last_ts", 0)
         if state["ts"] != last_ts:
