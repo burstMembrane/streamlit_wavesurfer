@@ -79,7 +79,6 @@ export const useWaveSurfer = ({
 
         ws.on("ready", () => {
             setWaveSurfer({ instance: ws, ready: true });
-            console.log("wavesurfer ready", ws);
             setDuration(ws.getDuration());
             onReady();
 
@@ -126,10 +125,12 @@ export const useWaveSurfer = ({
             });
         });
         ws.loadBlob(audioBlob);
-        // subscribe to the sync channel
-        syncChannel.onmessage = (event) => {
-            console.log("syncChannel message", event);
-        };
+
+        if (import.meta.env.DEV) {
+            syncChannel.onmessage = (event) => {
+                console.log("syncChannel message", event);
+            };
+        }
     }, [audioBlob, containerRef, waveOptions, onReady, plugins, setWaveSurfer, waveSurfer]);
 
     useEffect(() => {
