@@ -13,7 +13,6 @@ export default defineConfig({
     build: {
         minify: "esbuild",
         rollupOptions: {
-            external: ['react', 'react-dom'],
             treeshake: 'smallest',
         }
     }
