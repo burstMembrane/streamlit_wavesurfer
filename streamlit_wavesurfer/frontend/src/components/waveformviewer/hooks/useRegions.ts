@@ -1,12 +1,13 @@
 import { useEffect, useState, useCallback } from "react";
 import { useAtom, useAtomValue } from "jotai";
-import { regionsAtom, activeRegionAtom, loopRegionsAtom, AugmentedRegion } from "@waveformviewer/atoms/regions";
+import { regionsAtom, activeRegionAtom, loopRegionsAtom, instantRegionHighlightAtom, AugmentedRegion } from "@waveformviewer/atoms/regions";
 import { waveSurferAtom } from "@waveformviewer/atoms/wavesurfer";
 import { getPluginInstanceByName } from "@waveformviewer/atoms/plugins";
 
 export const useRegions = () => {
     const [loopRegions, setLoopRegions] = useAtom(loopRegionsAtom);
     const [activeRegion, setActiveRegionState] = useAtom(activeRegionAtom);
+    const instantHighlight = useAtomValue(instantRegionHighlightAtom);
     const { ready: waveformReady } = useAtomValue(waveSurferAtom);
     const regionsPlugin = getPluginInstanceByName('regions');
     const [regions] = useAtom(regionsAtom);
@@ -46,6 +47,10 @@ export const useRegions = () => {
         if (!pluginRegions) return;
         pluginRegions.forEach((region: any) => {
             if (!region) return;
+            // Apply instant transition if enabled
+            if (instantHighlight && region.element) {
+                region.element.style.transition = 'none';
+            }
             if (region.id === regionId) {
                 region.setOptions({ color: regionColor?.lightenedColor });
             } else {

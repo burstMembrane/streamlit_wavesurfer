@@ -609,6 +609,7 @@ class WaveSurferOptions:
     showMinimap: bool = False
     regionOpacity: float = 0.2
     regionLightening: int = 50
+    instantRegionHighlight: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
         return self.__dict__

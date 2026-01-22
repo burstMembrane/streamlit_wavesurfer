@@ -8,7 +8,7 @@ import { Region } from "@/components/waveformviewer/types"
 import { WaveSurferUserOptions } from "@/components/waveformviewer/types"
 import { Suspense } from "react"
 import { useAtom, useAtomValue, useSetAtom } from "jotai"
-import { regionsAtom, setRegionsAtom } from "@waveformviewer/atoms/regions"
+import { regionsAtom, setRegionsAtom, instantRegionHighlightAtom } from "@waveformviewer/atoms/regions"
 import { WaveSurferPluginConfigurationNested } from "@waveformviewer/atoms/plugins"
 import { pluginsAtom } from "@waveformviewer/atoms/plugins"
 import { waveSurferAtom } from "./components/waveformviewer/atoms/wavesurfer"
@@ -38,6 +38,7 @@ const WavesurferComponent = ({ args }: WavesurferComponentProps) => {
     const [key, setKey] = useAtom(keyAtom);
     const [regions] = useAtom(regionsAtom);
     const setRegions = useSetAtom(setRegionsAtom);
+    const setInstantRegionHighlight = useSetAtom(instantRegionHighlightAtom);
     const { ready: waveformReady } = useAtomValue(waveSurferAtom);
     useEffect(() => {
 
@@ -66,6 +67,10 @@ const WavesurferComponent = ({ args }: WavesurferComponentProps) => {
     useEffect(() => {
         setKey(args.key);
     }, [args.key]);
+
+    useEffect(() => {
+        setInstantRegionHighlight(args.wave_options?.instantRegionHighlight ?? false);
+    }, [args.wave_options?.instantRegionHighlight, setInstantRegionHighlight]);
 
     useEffect(() => {
         if (!waveformReady) return;

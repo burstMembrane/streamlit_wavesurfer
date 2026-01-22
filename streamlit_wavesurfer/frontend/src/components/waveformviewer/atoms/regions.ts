@@ -120,6 +120,11 @@ export const setLoopRegionAtom = atom(
     }
 );
 
+/**
+ * Controls whether region highlighting uses instant transitions (no animation).
+ */
+export const instantRegionHighlightAtom = atom<boolean>(false);
+
 // ----------------------
 // Region Store Hook
 // ----------------------

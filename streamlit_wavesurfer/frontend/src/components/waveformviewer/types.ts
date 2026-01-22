@@ -49,5 +49,6 @@ export interface WaveSurferUserOptions {
     hideScrollbar?: boolean;
     regionOpacity?: number;
     regionLightening?: number;
+    instantRegionHighlight?: boolean;
 }
 
