@@ -29,7 +29,7 @@ export const useWaveSurfer = ({
     const key = useAtomValue(keyAtom);
     const syncChannel = useMemo(() => new BroadcastChannel(`streamlit-wavesurfer-sync-${key}`), [key]);
 
-    const [currentTime] = useState(0);
+    const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
     const [isPlaying, setIsPlaying] = useState(false);
     const [plugins] = useAtom(pluginsAtom);
@@ -112,6 +112,7 @@ export const useWaveSurfer = ({
             });
         });
         ws.on("timeupdate", () => {
+            setCurrentTime(ws.getCurrentTime());
             syncChannel.postMessage({
                 type: "timeUpdate",
                 time: ws.getCurrentTime()
