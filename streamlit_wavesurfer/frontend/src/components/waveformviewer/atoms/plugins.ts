@@ -64,7 +64,22 @@ export const PLUGINS_MAP: {
 } = {
     regions: (options) => RegionsPlugin.create(options && Object.keys(options).length > 0 ? options : undefined),
     spectrogram: (options) => SpectrogramPlugin.create(options && Object.keys(options).length > 0 ? options : undefined),
-    timeline: (options) => TimelinePlugin.create(options && Object.keys(options).length > 0 ? options : undefined),
+    timeline: (options) => {
+        // Only pass through safe options, let plugin use its own defaults for callbacks
+        const safeOptions = options ? {
+            height: options.height,
+            insertPosition: options.insertPosition,
+            timeInterval: options.timeInterval,
+            primaryLabelInterval: options.primaryLabelInterval,
+            secondaryLabelInterval: options.secondaryLabelInterval,
+            style: options.style,
+        } : undefined;
+        // Filter out undefined values
+        const filteredOptions = safeOptions
+            ? Object.fromEntries(Object.entries(safeOptions).filter(([_, v]) => v !== undefined))
+            : undefined;
+        return TimelinePlugin.create(filteredOptions && Object.keys(filteredOptions).length > 0 ? filteredOptions : undefined);
+    },
     zoom: (options) => ZoomPlugin.create(options && Object.keys(options).length > 0 ? options : undefined),
     hover: (options) => HoverPlugin.create(options && Object.keys(options).length > 0 ? options : undefined),
     minimap: (options) => MinimapPlugin.create(options || {}),

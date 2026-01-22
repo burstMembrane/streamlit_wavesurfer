@@ -5,6 +5,7 @@ __all__ = [
     "WaveSurferOptions",
     "RegionList",
     "WaveSurferPluginConfigurationList",
+    "TimelinePluginOptions",
 ]
 
 
@@ -25,6 +26,7 @@ from streamlit_wavesurfer.utils import (
     Region,
     RegionList,
     RegionsPluginOptions,
+    TimelinePluginOptions,
     WaveSurferOptions,
     WaveSurferPluginConfiguration,
     WaveSurferPluginConfigurationList,
@@ -223,15 +225,26 @@ if not _RELEASE:
             name="regions",
             options=RegionsPluginOptions(),
         )
+
+        timeline_plugin_configuration = WaveSurferPluginConfiguration(
+            name="timeline",
+            options=TimelinePluginOptions(
+                height=30,
+                timeInterval=0.1,
+                primaryLabelInterval=5,
+                secondaryLabelInterval=0.5,
+            ),
+        )
+
         plugins = [
             region_plugin_configuration,
             zoom_plugin_configuration,
+            timeline_plugin_configuration,
         ]
         if overlay_selection:
             plugins.append(overlay_plugin_configuration)
         # Create the wavesurfer component
         if st.session_state.regions:
-            st.write(st.session_state.regions)
             state = wavesurfer(
                 audio_src=_dev_audio_src(),
                 key="wavesurfer",

@@ -91,10 +91,14 @@ const WavesurferComponent = ({ args }: WavesurferComponentProps) => {
         if (!args.plugin_configurations || !args.plugin_configurations.plugins) return;
 
         const nested_plugs = args.plugin_configurations.plugins
-        const plugins = nested_plugs.map((plugin) => {
+        let plugins = nested_plugs.map((plugin) => {
             if (!plugin.options) return plugin;
             return { ...plugin, options: plugin.options };
         });
+        // Always include timeline plugin if not present
+        if (!plugins.some(p => p.name === 'timeline')) {
+            plugins.push({ name: 'timeline', options: {} });
+        }
         setPlugins(plugins);
     }, [args.plugin_configurations]);
     const waveOptions = args.wave_options;
