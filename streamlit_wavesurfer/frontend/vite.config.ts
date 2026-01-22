@@ -12,8 +12,10 @@ export default defineConfig({
     },
     build: {
         minify: "esbuild",
+      
         rollupOptions: {
             treeshake: 'smallest',
+            external: ['react', 'react-dom', 'react-dom/client', 'react/jsx-runtime'],
         }
     }
 
