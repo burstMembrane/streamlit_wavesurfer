@@ -47,5 +47,7 @@ export interface WaveSurferUserOptions {
     barRadius?: number;
     normalize?: boolean;
     hideScrollbar?: boolean;
+    regionOpacity?: number;
+    regionLightening?: number;
 }
 

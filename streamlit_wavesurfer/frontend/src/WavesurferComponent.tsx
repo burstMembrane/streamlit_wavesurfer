@@ -42,8 +42,10 @@ const WavesurferComponent = ({ args }: WavesurferComponentProps) => {
     useEffect(() => {
 
         if (!args.regions || args.regions.length === 0 || !args.region_colormap) return;
+        const regionOpacity = args.wave_options?.regionOpacity ?? 0.2;
+        const regionLightening = args.wave_options?.regionLightening ?? 50;
         if (args.regions.length !== regions.length) {
-            setRegions({ regions: args.regions as Region[], colormapName: args.region_colormap });
+            setRegions({ regions: args.regions as Region[], colormapName: args.region_colormap, regionOpacity, regionLightening });
             return;
         }
         const isSame = args.regions.every((region, index) => {
@@ -57,9 +59,9 @@ const WavesurferComponent = ({ args }: WavesurferComponentProps) => {
             );
         });
         if (!isSame) {
-            setRegions({ regions: args.regions as Region[], colormapName: args.region_colormap });
+            setRegions({ regions: args.regions as Region[], colormapName: args.region_colormap, regionOpacity, regionLightening });
         }
-    }, [args.regions, args.region_colormap]);
+    }, [args.regions, args.region_colormap, args.wave_options?.regionOpacity, args.wave_options?.regionLightening]);
 
     useEffect(() => {
         setKey(args.key);

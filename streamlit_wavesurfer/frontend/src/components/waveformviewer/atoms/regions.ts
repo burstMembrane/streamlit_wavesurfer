@@ -39,13 +39,13 @@ export const activeRegionIdAtom = atom<string | null>(null);
  * Returns an array of colours to assign to regions.
  * The number of shades is proportional to the number of regions.
  */
-export const getRegionColors = (regions: Region[], colormapName: string) => {
+export const getRegionColors = (regions: Region[], colormapName: string, opacity: number = 0.2) => {
     if (!regions || regions.length === 0) return [];
     return colormap({
         colormap: colormapName || 'magma',
         nshades: Math.max(regions.length, 10),
         format: 'rgbaString',
-        alpha: 0.2
+        alpha: opacity
     });
 };
 
@@ -61,10 +61,10 @@ function addId<T extends Region>(region: T): T & { id: string } {
     return augmentWithFields(region, { id });
 }
 
-function addColor<T extends Region>(region: T, color: string): T & { color: string; lightenedColor: string } {
+function addColor<T extends Region>(region: T, color: string, lightening: number = 50): T & { color: string; lightenedColor: string } {
     return augmentWithFields(region, {
         color,
-        lightenedColor: lightenColor(color),
+        lightenedColor: lightenColor(color, lightening),
     });
 }
 
@@ -86,10 +86,10 @@ export const activeRegionAtom = atom<Region | null>(null);
  */
 export const setRegionsAtom = atom(
     null,
-    (_get, set, { regions, colormapName }: { regions: Region[]; colormapName: string }) => {
-        const colors = getRegionColors(regions, colormapName);
+    (_get, set, { regions, colormapName, regionOpacity = 0.2, regionLightening = 50 }: { regions: Region[]; colormapName: string; regionOpacity?: number; regionLightening?: number }) => {
+        const colors = getRegionColors(regions, colormapName, regionOpacity);
         const processed = regions.map((region, index) => {
-            return addColor(addId(region), colors[index % colors.length]);
+            return addColor(addId(region), colors[index % colors.length], regionLightening);
         });
         console.log("[setRegionsAtom] processed", processed)
         // make it unique
@@ -139,10 +139,10 @@ export const useRegionsAtom = () => atom(
                 break;
             case 'setRegions': {
                 // For demonstration, process regions using addId and addColor
-                const { regions, colormapName } = action.payload;
-                const colors = getRegionColors(regions, colormapName);
+                const { regions, colormapName, regionOpacity = 0.2, regionLightening = 50 } = action.payload;
+                const colors = getRegionColors(regions, colormapName, regionOpacity);
                 const processed = regions.map((region: Region, index: number) =>
-                    addColor(addId(region), colors[index % colors.length])
+                    addColor(addId(region), colors[index % colors.length], regionLightening)
                 );
                 set(regionsAtom, processed);
                 break;

@@ -109,15 +109,13 @@ def wavesurfer(
     if isinstance(wave_options, WaveSurferOptions):
         wave_options = wave_options.to_dict()
     audio_url: AudioData = audio_to_base64(audio_src)
-    if not isinstance(regions, list):
-        # initialize empty list
-        regions = []
+
     if isinstance(regions, list) and all(
         isinstance(region, dict) for region in regions
     ):
         regions = regions
     elif isinstance(regions, RegionList):
-        regions = regions.to_dict()
+        regions = list(regions.to_dict())
     elif all(isinstance(region, Region) for region in regions):
         regions = [region.to_dict() for region in regions]
 
@@ -140,10 +138,9 @@ if not _RELEASE:
 
     import pandas as pd
     import streamlit as st
-    from streamlit.components.v1 import html
 
     @st.cache_data
-    def regions() -> List[Region]:
+    def _dev_regions() -> List[Region]:
         """Sample regions from the audio file."""
         regions_path = Path(__file__).parent.parent / "assets" / "because.json"
         with open(regions_path, "r") as f:
@@ -151,91 +148,118 @@ if not _RELEASE:
         return regions
 
     @st.cache_data
-    def audio_src() -> str:
+    def _dev_audio_src() -> str:
         """Sample audio source from the audio file."""
         audio_path = Path(__file__).parent.parent / "assets" / "because.mp3"
         return str(audio_path.absolute())
 
     @st.cache_data
-    def image_src() -> str:
+    def _dev_image_src() -> str:
         """Sample image source from the image file."""
-
         image_path = Path(__file__).parent.parent / "assets" / "because.png"
         return str(image_path.absolute())
 
-    image_url: ImageData = image_to_base64(image_src())
+    def _run_dev_ui():
+        image_url: ImageData = image_to_base64(_dev_image_src())
 
-    regions = RegionList(regions())
-    colormap_options = list(Colormap.__args__)
-    colormap_selection = st.selectbox(
-        "Select a colormap",
-        colormap_options,
-        index=colormap_options.index("cool"),
-    )
-    cols = st.columns(2)
-    with cols[0]:
-        wavecolor_selection = st.color_picker("Select a wave color", value="#cccccc")
-    with cols[1]:
-        progresscolor_selection = st.color_picker(
-            "Select a progress color", value="#cccccc"
+        regions = RegionList(_dev_regions())
+        colormap_options = list(Colormap.__args__)
+        colormap_selection = st.selectbox(
+            "Select a colormap",
+            colormap_options,
+            index=colormap_options.index("cool"),
+            key="dev_colormap_select",
         )
-    # Initialize regions in session state if not already present
-    if "regions" not in st.session_state:
-        st.session_state.regions = regions
-        st.session_state._last_ts = 0
-    # overlay plugin options
+        cols = st.columns(2)
+        with cols[0]:
+            wavecolor_selection = st.color_picker(
+                "Select a wave color", value="#cccccc", key="dev_wavecolor"
+            )
+        with cols[1]:
+            progresscolor_selection = st.color_picker(
+                "Select a progress color", value="#cccccc", key="dev_progresscolor"
+            )
+        region_cols = st.columns(2)
+        with region_cols[0]:
+            region_opacity = st.slider(
+                "Region opacity",
+                min_value=0.0,
+                max_value=1.0,
+                value=0.2,
+                step=0.05,
+                key="dev_region_opacity",
+            )
+        with region_cols[1]:
+            region_lightening = st.slider(
+                "Region lightening",
+                min_value=0,
+                max_value=150,
+                value=50,
+                step=5,
+                key="dev_region_lightening",
+            )
+        # Initialize regions in session state if not already present
+        if "regions" not in st.session_state:
+            st.session_state.regions = regions
+            st.session_state._last_ts = 0
+        # overlay plugin options
 
-    overlay_selection = st.checkbox("Overlay", value=False)
-    if overlay_selection:
-        overlay_plugin_configuration = WaveSurferPluginConfiguration(
-            name="overlay",
-            options=OverlayPluginOptions(
-                imageUrl=image_url,
-                position="overlay",
-                opacity=1.0,
-                # hideWaveform=True,
-            ),
+        overlay_selection = st.checkbox("Overlay", value=False, key="dev_overlay")
+        if overlay_selection:
+            overlay_plugin_configuration = WaveSurferPluginConfiguration(
+                name="overlay",
+                options=OverlayPluginOptions(
+                    imageUrl=image_url,
+                    position="overlay",
+                    opacity=1.0,
+                ),
+            )
+        zoom_plugin_configuration = WaveSurferPluginConfiguration(
+            name="zoom",
+            options=ZoomPluginOptions().__default_options__(),
         )
-    zoom_plugin_configuration = WaveSurferPluginConfiguration(
-        name="zoom",
-        options=ZoomPluginOptions().__default_options__(),
-    )
 
-    region_plugin_configuration = WaveSurferPluginConfiguration(
-        name="regions",
-        options=RegionsPluginOptions(),
-    )
-    plugins = [
-        region_plugin_configuration,
-        zoom_plugin_configuration,
-    ]
-    if overlay_selection:
-        plugins.append(overlay_plugin_configuration)
-    # Create the wavesurfer component
-    state = wavesurfer(
-        audio_src=audio_src(),
-        key="wavesurfer",
-        regions=st.session_state.regions,  # Always use the current session state regions
-        wave_options=WaveSurferOptions(
-            waveColor=wavecolor_selection,
-            progressColor=progresscolor_selection,
-            autoScroll=True,
-            autoCenter=True,
-            height=512,
-        ),
-        plugins=plugins,
-        region_colormap=colormap_selection,
-        show_controls=True,
-    )
-    if state and "ts" in state:
-        last_ts = st.session_state.get("_last_ts", 0)
-        if state["ts"] != last_ts:
-            st.session_state.regions = RegionList(state["regions"])
-            st.session_state["_last_ts"] = state["ts"]
+        region_plugin_configuration = WaveSurferPluginConfiguration(
+            name="regions",
+            options=RegionsPluginOptions(),
+        )
+        plugins = [
+            region_plugin_configuration,
+            zoom_plugin_configuration,
+        ]
+        if overlay_selection:
+            plugins.append(overlay_plugin_configuration)
+        # Create the wavesurfer component
+        if st.session_state.regions:
+            st.write(st.session_state.regions)
+            state = wavesurfer(
+                audio_src=_dev_audio_src(),
+                key="wavesurfer",
+                regions=st.session_state.regions,
+                wave_options=WaveSurferOptions(
+                    waveColor=wavecolor_selection,
+                    progressColor=progresscolor_selection,
+                    autoScroll=True,
+                    autoCenter=True,
+                    height=256,
+                    regionOpacity=region_opacity,
+                    regionLightening=region_lightening,
+                ),
+                plugins=plugins,
+                region_colormap=colormap_selection,
+                show_controls=True,
+            )
+            if state and "ts" in state:
+                last_ts = st.session_state.get("_last_ts", 0)
+                if state["ts"] != last_ts:
+                    st.session_state.regions = RegionList(state["regions"])
+                    st.session_state["_last_ts"] = state["ts"]
 
-    # Display whatever is in session_state.regions
-    df = pd.DataFrame(
-        st.session_state.regions.to_dict(),
-        columns=["id", "start", "end", "content"],
-    )
-    st.dataframe(df)
+        # Display whatever is in session_state.regions
+        df = pd.DataFrame(
+            st.session_state.regions.to_dict(),
+            columns=["id", "start", "end", "content"],
+        )
+        st.dataframe(df)
+
+    _run_dev_ui()

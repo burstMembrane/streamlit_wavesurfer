@@ -607,6 +607,8 @@ class WaveSurferOptions:
     normalize: bool = True
     hideScrollbar: bool = True
     showMinimap: bool = False
+    regionOpacity: float = 0.2
+    regionLightening: int = 50
 
     def to_dict(self) -> Dict[str, Any]:
         return self.__dict__
