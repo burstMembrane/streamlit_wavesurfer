@@ -1,3 +1,4 @@
+.PHONY: dev build clean publish
 
 dev:
 	tmux kill-session -t dev 2>/dev/null || true
@@ -11,6 +12,8 @@ build:
 	cd streamlit_wavesurfer/frontend && bun run build
 	uv build 
 	
+clean:
+	rm -rf dist
 
-publish:
+publish: clean build
 	uv publish 
