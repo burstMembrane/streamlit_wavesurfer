@@ -26,6 +26,7 @@ from streamlit_wavesurfer.utils import (
     Region,
     RegionList,
     RegionsPluginOptions,
+    SelectPluginOptions,
     TimelinePluginOptions,
     WaveSurferOptions,
     WaveSurferPluginConfiguration,
@@ -63,7 +64,17 @@ def wavesurfer(
     region_colormap: Optional[Colormap] = None,
     show_controls: bool = True,
     plugins: Optional[
-        List[Literal["regions", "spectrogram", "timeline", "zoom", "hover", "minimap"]]
+        List[
+            Literal[
+                "regions",
+                "spectrogram",
+                "timeline",
+                "zoom",
+                "hover",
+                "minimap",
+                "select",
+            ]
+        ]
     ] = None,
 ) -> bool:
     """A waveform viewer that supports wavesurfer plugins
@@ -236,10 +247,16 @@ if not _RELEASE:
             ),
         )
 
+        select_plugin_configuration = WaveSurferPluginConfiguration(
+            name="select",
+            options=SelectPluginOptions(),
+        )
+
         plugins = [
             region_plugin_configuration,
             zoom_plugin_configuration,
             timeline_plugin_configuration,
+            select_plugin_configuration,
         ]
         if overlay_selection:
             plugins.append(overlay_plugin_configuration)

@@ -22,6 +22,7 @@ PLUGIN_NAMES = [
     "hover",
     "minimap",
     "overlay",
+    "select",
 ]
 
 
@@ -49,6 +50,8 @@ class BasePluginOptions:
             return MinimapPluginOptions()
         elif name == "overlay":
             return OverlayPluginOptions()
+        elif name == "select":
+            return SelectPluginOptions()
         else:
             raise ValueError(f"Unknown plugin: {name}")
 
@@ -220,6 +223,27 @@ class MinimapPluginOptions(BasePluginOptions):
 
 @dataclass_json
 @dataclass
+class SelectPluginOptions(BasePluginOptions):
+    # Color of the selection region
+    regionColor: Optional[str] = None
+    # Border color of the selection region
+    borderColor: Optional[str] = None
+    # Width of the border lines in pixels
+    borderWidth: Optional[int] = None
+    # Background color of the select overlay bar
+    selectOverlayBackground: Optional[str] = None
+    # Text color of the select overlay bar
+    selectOverlayTextColor: Optional[str] = None
+    # Position of the select overlay bar ('top' or 'bottom')
+    selectOverlayPosition: Optional[Literal["top", "bottom"]] = None
+    # Whether to show the loop checkbox
+    showLoopControl: Optional[bool] = None
+    # Default state of loop checkbox
+    loopByDefault: Optional[bool] = None
+
+
+@dataclass_json
+@dataclass
 class PluginOptionsMap:
     regions: Optional[RegionsPluginOptions] = None
     spectrogram: Optional[SpectrogramPluginOptions] = None
@@ -227,6 +251,7 @@ class PluginOptionsMap:
     zoom: Optional[ZoomPluginOptions] = None
     hover: Optional[HoverPluginOptions] = None
     minimap: Optional[MinimapPluginOptions] = None
+    select: Optional[SelectPluginOptions] = None
 
 
 @dataclass_json
@@ -269,6 +294,7 @@ class WaveSurferPluginConfiguration:
         "hover",
         "minimap",
         "overlay",
+        "select",
     ]
     options: (
         MinimapPluginOptions
@@ -277,6 +303,7 @@ class WaveSurferPluginConfiguration:
         | ZoomPluginOptions
         | HoverPluginOptions
         | OverlayPluginOptions
+        | SelectPluginOptions
     )
 
     instance: Optional[InstantiatedPlugin] = None
@@ -313,6 +340,10 @@ class WaveSurferPluginConfiguration:
         elif name == "minimap":
             return cls(
                 name="minimap", options=MinimapPluginOptions().__default_options__()
+            )
+        elif name == "select":
+            return cls(
+                name="select", options=SelectPluginOptions().__default_options__()
             )
         else:
             raise ValueError(
@@ -361,6 +392,10 @@ DEFAULT_PLUGINS = [
     WaveSurferPluginConfiguration(
         name="zoom",
         options=ZoomPluginOptions().__default_options__(),
+    ),
+    WaveSurferPluginConfiguration(
+        name="select",
+        options=SelectPluginOptions().__default_options__(),
     ),
 ]
 

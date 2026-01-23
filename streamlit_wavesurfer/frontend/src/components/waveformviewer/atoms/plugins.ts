@@ -6,6 +6,7 @@ import HoverPlugin, { HoverPluginOptions } from "wavesurfer.js/dist/plugins/hove
 import MinimapPlugin, { MinimapPluginOptions } from "wavesurfer.js/dist/plugins/minimap.js";
 import { atom, useAtomValue } from "jotai";
 import OverlayPlugin, { OverlayPluginOptions } from "wavesurfer-overlay-plugin";
+import SelectPlugin, { SelectPluginOptions } from "wavesurfer-select-plugin";
 // import the wavesurfer atom
 import { waveSurferAtom } from "./wavesurfer";
 
@@ -16,7 +17,8 @@ type PluginOptionsMap = {
     zoom: ZoomPluginOptions;
     hover: HoverPluginOptions;
     minimap: MinimapPluginOptions;
-    overlay: OverlayPluginOptions
+    overlay: OverlayPluginOptions;
+    select: SelectPluginOptions;
 };
 export type WaveSurferPluginConfigurationNested = {
     plugins: WaveSurferPluginConfiguration[];
@@ -57,6 +59,10 @@ export const DEFAULT_PLUGINS: WaveSurferPluginConfiguration[] = [
             iterations: 100
         }
     },
+    {
+        name: "select",
+        options: {}
+    },
 ];
 
 export const PLUGINS_MAP: {
@@ -92,6 +98,7 @@ export const PLUGINS_MAP: {
         }
         return OverlayPlugin.create(opts);
     },
+    select: (options) => SelectPlugin.create(options && Object.keys(options).length > 0 ? options : undefined),
 };
 
 
@@ -107,7 +114,7 @@ type PluginInstanceMap = {
     hover: HoverPlugin;
     minimap: MinimapPlugin;
     overlay: OverlayPlugin;
-    // Add others as needed
+    select: SelectPlugin;
 };
 
 export const getPluginByNameAtom = atom(
